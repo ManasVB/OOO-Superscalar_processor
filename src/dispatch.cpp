@@ -55,7 +55,7 @@ bool Fetch(FILE *FP, unsigned long int width) {
 void Decode() {
 
   /* If RN is empty (can accept a new rename bundle), then advance the decode bundle
-   * from DE to RN.
+   * from DE to RN. Else do nothing.
   */ 
   if(RN_REG.empty()) {
       RN_REG = DE_REG;
@@ -69,7 +69,7 @@ void Rename(unsigned long int rob_size) {
   bool is_enough_entries = (tail + RN_REG.size())%rob_size > head;
   
   /* If RR is empty and enough entries exist, process the rename bundle and advance
-   * if from RN to RR.
+   * if from RN to RR. Else do nothing.
   */
   if(RR_REG.empty() && is_enough_entries) {
 
