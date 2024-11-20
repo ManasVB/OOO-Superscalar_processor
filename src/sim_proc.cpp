@@ -15,8 +15,11 @@ using namespace std;
 vector<RMT> rmt;
 vector<ROB> rob;
 vector<IQ> iq;
+vector<Bundle> bundle;
 uint8_t num_regs = 67;  // No. of registers in the ISA (r0-r66)
 uint64_t total_cycle_count = 0;
+uint64_t instruction_count = 0;
+bool trace_file_read = false;
 
 static bool Advance_Cycle(void);
 
@@ -35,8 +38,6 @@ int main (int argc, char* argv[]) {
     FILE *FP;               // File handler
     char *trace_file;       // Variable that holds trace file name;
     proc_params params;       // look at sim_bp.h header file for the the definition of struct proc_params
-    int op_type, dest, src1, src2;  // Variables are read from trace file
-    uint64_t pc; // Variable holds the pc read from input file
     
     if (argc != 5) {
         printf("Error: Wrong number of inputs:%d\n", argc-1);
@@ -63,6 +64,7 @@ int main (int argc, char* argv[]) {
     rob.resize(params.rob_size, {false, 0});
     iq.resize(params.iq_size, {false, 0, false, 0, false, 0});
     rmt.resize(num_regs,{false, 0});
+    bundle.resize(params.width, {0});
     
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     //
@@ -73,14 +75,10 @@ int main (int argc, char* argv[]) {
     // inside the Fetch() function.
     //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
-    // while(fscanf(FP, "%lx %d %d %d %d", &pc, &op_type, &dest, &src1, &src2) != EOF)
-    //     printf("%lx %d %d %d %d\n", pc, op_type, dest, src1, src2); //Print to check if inputs have been read correctly
 
     do {
 
-
-
-        Fetch();
+        Fetch(FP, params.width);
 
     } while (Advance_Cycle());
     
@@ -90,6 +88,6 @@ int main (int argc, char* argv[]) {
 static bool Advance_Cycle () {
 
     ++total_cycle_count;
-    
-    return false;
+
+    return !trace_file_read;
 }

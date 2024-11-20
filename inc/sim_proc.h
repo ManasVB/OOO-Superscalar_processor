@@ -30,3 +30,11 @@ typedef struct {
     bool valid;
     uint32_t ROB_tag;
 } RMT;
+
+typedef struct {
+    uint64_t pc;
+    int op_type;
+    int dest;
+    int src1; 
+    int src2;
+} Bundle;

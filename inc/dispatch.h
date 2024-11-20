@@ -1,6 +1,8 @@
 #pragma once
 
-extern void Fetch(void);
+#include <cstdio>
+
+extern bool Fetch(FILE *fp, unsigned long int);
 
 extern void Decode(void);
 
