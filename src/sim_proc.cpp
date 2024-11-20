@@ -15,11 +15,14 @@ using namespace std;
 vector<RMT> rmt;
 vector<ROB> rob;
 vector<IQ> iq;
-vector<Bundle> bundle;
+vector<vector<pipeline_regs_d>> bundle(4);
+
+uint32_t head = 0, tail = 0;
+
 uint8_t num_regs = 67;  // No. of registers in the ISA (r0-r66)
 uint64_t total_cycle_count = 0;
-uint64_t instruction_count = 0;
-bool trace_file_read = false;
+uint64_t total_instruction_count = 0;
+bool trace_read_complete = false;
 
 static bool Advance_Cycle(void);
 
@@ -64,7 +67,6 @@ int main (int argc, char* argv[]) {
     rob.resize(params.rob_size, {false, 0});
     iq.resize(params.iq_size, {false, 0, false, 0, false, 0});
     rmt.resize(num_regs,{false, 0});
-    bundle.resize(params.width, {0});
     
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     //
@@ -78,9 +80,15 @@ int main (int argc, char* argv[]) {
 
     do {
 
+        Rename(params.rob_size);
+
+        Decode();
+
         Fetch(FP, params.width);
 
     } while (Advance_Cycle());
+
+    // std::cout << "Total instruction count: " << total_instruction_count << "\nTotal cycle count: " << total_cycle_count << std::endl;
     
     return 0;
 }
@@ -89,5 +97,5 @@ static bool Advance_Cycle () {
 
     ++total_cycle_count;
 
-    return !trace_file_read;
+    return !trace_read_complete;
 }

@@ -12,7 +12,7 @@ typedef struct proc_params{
 
 typedef struct {
     bool rdy;
-    uint8_t dst;    // R0-R66
+    int dst;    // R0-R66, -1 if no dest register
 } ROB;
 
 typedef struct {
@@ -34,7 +34,7 @@ typedef struct {
 typedef struct {
     uint64_t pc;
     int op_type;
-    int dest;
+    int dst;
     int src1; 
     int src2;
 } Bundle;
