@@ -1,5 +1,4 @@
-#ifndef SIM_PROC_H
-#define SIM_PROC_H
+#pragma once
 
 #include <cstdint>
 #include <map>
@@ -12,9 +11,8 @@ typedef struct proc_params{
 }proc_params;
 
 typedef struct {
-    uint8_t dst;    // R0-R66
-    uint32_t pc;
     bool rdy;
+    uint8_t dst;    // R0-R66
 } ROB;
 
 typedef struct {
@@ -32,6 +30,3 @@ typedef struct {
     bool valid;
     uint32_t ROB_tag;
 } RMT;
-
-
-#endif
