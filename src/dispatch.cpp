@@ -12,6 +12,8 @@ using namespace std;
 #define RR_REG  bundle[2]
 
 extern vector<ROB> rob;
+extern vector<RMT> rmt;
+
 extern bool trace_read_complete;
 extern uint64_t total_instruction_count;
 extern uint32_t head, tail;
@@ -72,9 +74,22 @@ void Rename(unsigned long int rob_size) {
   if(RR_REG.empty() && is_enough_entries) {
 
     for(auto &instr: RN_REG) {
+
+      // allocate an entry in the ROB for the instruction
       rob[tail] = {.rdy = false, .dst = instr.dst};
 
+      // rename its source registers
+      if(rmt[instr.src1].valid)
+        instr.src1 = rmt[instr.src1].ROB_tag;
 
+      if(rmt[instr.src2].valid)
+        instr.src2 = rmt[instr.src2].ROB_tag;
+      
+      // if destination register exist, update RMT and update instr dst with ROB_Tag
+      if(instr.dst != -1) {
+        rmt[instr.dst] = {.valid = true, .ROB_tag = tail};
+      }
+      instr.dst = tail; //dst now becomes dst_tag
 
       tail = (tail + 1)%rob_size;
     }
