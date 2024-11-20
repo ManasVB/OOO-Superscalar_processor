@@ -7,13 +7,24 @@
 #include <vector>
 
 #include "sim_proc.h"
+#include "dispatch.h"
+#include "execute.h"
 
 using namespace std;
 
 vector<RMT> rmt;
 vector<ROB> rob;
 vector<IQ> iq;
-uint8_t num_regs = 67;  // No. of registers in the ISA (r0-r66) 
+vector<vector<pipeline_regs_d>> bundle(4);
+
+uint32_t head = 0, tail = 0;
+
+uint8_t num_regs = 67;  // No. of registers in the ISA (r0-r66)
+uint64_t total_cycle_count = 0;
+uint64_t total_instruction_count = 0;
+bool trace_read_complete = false;
+
+static bool Advance_Cycle(void);
 
 /*  argc holds the number of command line arguments
     argv[] holds the commands themselves
@@ -30,8 +41,6 @@ int main (int argc, char* argv[]) {
     FILE *FP;               // File handler
     char *trace_file;       // Variable that holds trace file name;
     proc_params params;       // look at sim_bp.h header file for the the definition of struct proc_params
-    int op_type, dest, src1, src2;  // Variables are read from trace file
-    uint64_t pc; // Variable holds the pc read from input file
     
     if (argc != 5) {
         printf("Error: Wrong number of inputs:%d\n", argc-1);
@@ -68,8 +77,25 @@ int main (int argc, char* argv[]) {
     // inside the Fetch() function.
     //
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
-    // while(fscanf(FP, "%lx %d %d %d %d", &pc, &op_type, &dest, &src1, &src2) != EOF)
-    //     printf("%lx %d %d %d %d\n", pc, op_type, dest, src1, src2); //Print to check if inputs have been read correctly
 
+    do {
+
+        Rename(params.rob_size);
+
+        Decode();
+
+        Fetch(FP, params.width);
+
+    } while (Advance_Cycle());
+
+    // std::cout << "Total instruction count: " << total_instruction_count << "\nTotal cycle count: " << total_cycle_count << std::endl;
+    
     return 0;
+}
+
+static bool Advance_Cycle () {
+
+    ++total_cycle_count;
+
+    return !trace_read_complete;
 }
