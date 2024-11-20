@@ -7,13 +7,18 @@
 #include <vector>
 
 #include "sim_proc.h"
+#include "dispatch.h"
+#include "execute.h"
 
 using namespace std;
 
 vector<RMT> rmt;
 vector<ROB> rob;
 vector<IQ> iq;
-uint8_t num_regs = 67;  // No. of registers in the ISA (r0-r66) 
+uint8_t num_regs = 67;  // No. of registers in the ISA (r0-r66)
+uint64_t total_cycle_count = 0;
+
+static bool Advance_Cycle(void);
 
 /*  argc holds the number of command line arguments
     argv[] holds the commands themselves
@@ -71,5 +76,20 @@ int main (int argc, char* argv[]) {
     // while(fscanf(FP, "%lx %d %d %d %d", &pc, &op_type, &dest, &src1, &src2) != EOF)
     //     printf("%lx %d %d %d %d\n", pc, op_type, dest, src1, src2); //Print to check if inputs have been read correctly
 
+    do {
+
+
+
+        Fetch();
+
+    } while (Advance_Cycle());
+    
     return 0;
+}
+
+static bool Advance_Cycle () {
+
+    ++total_cycle_count;
+    
+    return false;
 }
