@@ -88,6 +88,8 @@ int main (int argc, char* argv[]) {
 
     do {
 
+        Writeback();
+
         Execute();
 
         Issue(params.width);
