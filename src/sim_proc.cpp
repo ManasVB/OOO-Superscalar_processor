@@ -23,6 +23,8 @@ uint64_t total_cycle_count = 0;
 uint64_t total_instruction_count = 0;
 bool trace_read_complete = false;
 
+vector<vector<pipeline_regs_e>> execute_list;
+
 static bool Advance_Cycle(void);
 
 /*  argc holds the number of command line arguments
@@ -67,6 +69,7 @@ int main (int argc, char* argv[]) {
     iq.resize(params.iq_size, {false, 0, false, 0, false, 0});
     rmt.resize(num_regs,{false, 0});
     
+    execute_list.resize(5, vector<pipeline_regs_e>(params.width));
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
     //
     // The following loop just tests reading the trace and echoing it back to the screen.
@@ -78,6 +81,8 @@ int main (int argc, char* argv[]) {
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
     do {
+
+        Issue(params.width);
 
         Dispatch();
 

@@ -2,6 +2,7 @@
 #include <iostream>
 #include <cstdint>
 #include <vector>
+#include <algorithm>
 
 #include "dispatch.h"
 
@@ -31,6 +32,7 @@ void Fetch(FILE *FP, unsigned long int width) {
   uint64_t pc; // Variable holds the pc read from input file
 
   uint32_t line_count = 0;
+  uint8_t latency = 0;
 
   /* If there are more instructions in the trace file and if DE is empty (can accept
    * a new decode bundle), then fetch up to WIDTH instructions from the trace file
@@ -40,8 +42,15 @@ void Fetch(FILE *FP, unsigned long int width) {
   if(DE_REG.empty() && !trace_read_complete) {
     while(line_count < width) {
       if(fscanf(FP, "%lx %d %d %d %d", &pc, &op_type, &dest, &src1, &src2) != EOF) {
-        printf("%lx %d %d %d %d\n", pc, op_type, dest, src1, src2);
-        DE_REG.push_back({pc, op_type, dest, src1, src2, false, false});
+        if(op_type == 0)
+          latency = 1;
+        else if(op_type == 1)
+          latency = 2;
+        else
+          latency = 5;
+
+        // printf("%lx %d %d %d %d\n", pc, op_type, dest, src1, src2);
+        DE_REG.push_back({pc, op_type, dest, src1, src2, false, false, total_instruction_count, latency});
         ++line_count;
         ++total_instruction_count;
       } else {
@@ -141,12 +150,25 @@ void Dispatch() {
           if(!DI_REG[bundle_count].src2_rdy)
             itr.rs2_tag = DI_REG[bundle_count].src2;
 
+          itr.age = DI_REG[bundle_count].age;
+
+          itr.latency = DI_REG[bundle_count].latency;
+
           ++bundle_count;
         }
 
         if(bundle_count == DI_REG.size())
           break;
       }
+
+      // Sort the issue queue according on age in ascending order
+      std::sort(iq.begin(), iq.end(), [](const IQ &a, const IQ&b) {return a.age < b.age;});
+
+      // for(auto &instr: iq) {
+      //   cout << "valid: " << instr.valid << " dst_tag: " << instr.dst_tag << " age: " << instr.age << endl;
+      // }
+      // cout << endl;
+
       DI_REG.clear();
     }
   }
