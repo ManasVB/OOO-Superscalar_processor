@@ -165,7 +165,7 @@ void Dispatch() {
       std::sort(iq.begin(), iq.end(), [](const IQ &a, const IQ&b) {return a.age < b.age;});
 
       // for(auto &instr: iq) {
-      //   cout << "valid: " << instr.valid << " dst_tag: " << instr.dst_tag << " age: " << instr.age << endl;
+      //   cout << "valid: " << instr.valid << " dst_tag: " << instr.dst_tag << " age: " << instr.age << "rs ready: " << instr.rs1_rdy << instr.rs2_rdy << endl;
       // }
       // cout << endl;
 
