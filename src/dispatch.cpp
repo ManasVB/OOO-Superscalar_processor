@@ -116,9 +116,9 @@ void RegRead() {
     if(!wakeup.empty()) {
       for(auto &instr : RR_REG) {
         for(auto &wakeup_dst: wakeup) {
-          if(!instr.src1_rdy && instr.src1 == wakeup_dst)
+          if(!instr.src1_rdy && instr.src1 == (int)wakeup_dst)
             instr.src1_rdy = true;
-          if(!instr.src2_rdy && instr.src2 == wakeup_dst)
+          if(!instr.src2_rdy && instr.src2 == (int)wakeup_dst)
             instr.src2_rdy = true;
         }
       }
@@ -155,13 +155,10 @@ void Dispatch() {
           // check wakeup from execute
           if(!wakeup.empty()) {
             for(auto &wakeup_dst: wakeup) {
-              if(!(DI_REG[bundle_count].src1_rdy) && DI_REG[bundle_count].src1 == wakeup_dst) {
+              if(!(DI_REG[bundle_count].src1_rdy) && DI_REG[bundle_count].src1 == (int)wakeup_dst)
                 DI_REG[bundle_count].src1_rdy = true;
-              }
-
-              if(!(DI_REG[bundle_count].src2_rdy) && DI_REG[bundle_count].src2 == wakeup_dst) {
-                DI_REG[bundle_count].src2_rdy = true;
-              }              
+              if(!(DI_REG[bundle_count].src2_rdy) && DI_REG[bundle_count].src2 == (int)wakeup_dst)
+                DI_REG[bundle_count].src2_rdy = true;              
             }
           }
 
