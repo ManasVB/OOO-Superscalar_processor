@@ -80,6 +80,13 @@ void Execute() {
   }
 }
 
-void Writeback() {}
+void Writeback() {
+  for(auto &instr: WB_Reg) {
+    if(instr.valid) {
+      rob[instr.dst_tag].rdy = true;
+      instr.valid = false;
+    }
+  }
+}
 
 void Retire() {}
