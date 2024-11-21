@@ -6,7 +6,7 @@
 
 typedef Bundle pipeline_regs_d; // Dispatch engine pipeline registers
 
-extern bool Fetch(FILE *fp, unsigned long int);
+extern void Fetch(FILE *fp, unsigned long int);
 
 extern void Decode(void);
 

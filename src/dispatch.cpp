@@ -10,9 +10,11 @@ using namespace std;
 #define DE_REG  bundle[0]
 #define RN_REG  bundle[1]
 #define RR_REG  bundle[2]
+#define DI_REG  bundle[3]
 
 extern vector<ROB> rob;
 extern vector<RMT> rmt;
+extern vector<IQ> iq;
 
 extern bool trace_read_complete;
 extern uint64_t total_instruction_count;
@@ -21,9 +23,9 @@ extern uint32_t head, tail;
 /* bundle is a matrix of size 4 x width; for 4 pipeline registers in the dispatch engine
  * The no. of rows is 4 because there are 4 pipeline regs in this engine: DE, RN, RR, DI
 */
-extern vector<vector<pipeline_regs_d>> bundle;
+vector<vector<pipeline_regs_d>> bundle(4);
 
-bool Fetch(FILE *FP, unsigned long int width) {
+void Fetch(FILE *FP, unsigned long int width) {
 
   int op_type, dest, src1, src2;  // Variables are read from trace file
   uint64_t pc; // Variable holds the pc read from input file
@@ -39,7 +41,7 @@ bool Fetch(FILE *FP, unsigned long int width) {
     while(line_count < width) {
       if(fscanf(FP, "%lx %d %d %d %d", &pc, &op_type, &dest, &src1, &src2) != EOF) {
         printf("%lx %d %d %d %d\n", pc, op_type, dest, src1, src2);
-        DE_REG.push_back({pc, op_type, dest, src1, src2});
+        DE_REG.push_back({pc, op_type, dest, src1, src2, false, false});
         ++line_count;
         ++total_instruction_count;
       } else {
@@ -48,8 +50,6 @@ bool Fetch(FILE *FP, unsigned long int width) {
       }
     }
   }
-
-  return trace_read_complete;
 }
 
 void Decode() {
@@ -57,7 +57,7 @@ void Decode() {
   /* If RN is empty (can accept a new rename bundle), then advance the decode bundle
    * from DE to RN. Else do nothing.
   */ 
-  if(RN_REG.empty()) {
+  if(!DE_REG.empty() && RN_REG.empty()) {
       RN_REG = DE_REG;
       DE_REG.clear();
   }
@@ -71,19 +71,17 @@ void Rename(unsigned long int rob_size) {
   /* If RR is empty and enough entries exist, process the rename bundle and advance
    * if from RN to RR. Else do nothing.
   */
-  if(RR_REG.empty() && is_enough_entries) {
+  if(!RN_REG.empty() && RR_REG.empty() && is_enough_entries) {
 
     for(auto &instr: RN_REG) {
 
       // allocate an entry in the ROB for the instruction
       rob[tail] = {.rdy = false, .dst = instr.dst};
 
-      // rename its source registers
-      if(rmt[instr.src1].valid)
-        instr.src1 = rmt[instr.src1].ROB_tag;
+      // rename its source registers if not from ARF, else set them as ready
+      (rmt[instr.src1].valid) ? instr.src1 = rmt[instr.src1].ROB_tag : instr.src1_rdy = true;
 
-      if(rmt[instr.src2].valid)
-        instr.src2 = rmt[instr.src2].ROB_tag;
+      (rmt[instr.src2].valid) ? instr.src2 = rmt[instr.src2].ROB_tag : instr.src2_rdy = true;
       
       // if destination register exist, update RMT and update instr dst with ROB_Tag
       if(instr.dst != -1) {
@@ -99,6 +97,57 @@ void Rename(unsigned long int rob_size) {
   }
 }
 
-void RegRead() {}
+void RegRead() {
 
-void Dispatch() {}
+  if(!RR_REG.empty() && DI_REG.empty()) {
+
+    // TODO: Add logic for wakeup, src reg rdy update
+
+    DI_REG = RR_REG;
+    RR_REG.clear();
+  }
+}
+
+void Dispatch() {
+
+  if(!DI_REG.empty()) {
+
+    // Check if IQ has enough free entries to accept the entire dispatch bundle
+    bool is_enough_entries = false;
+    uint8_t free_entries_count = 0;
+    for(auto &itr: iq) {
+      if(!itr.valid)  // valid bit = 0, means free entry
+        ++free_entries_count;
+      if(free_entries_count >= DI_REG.size()) {
+        is_enough_entries = true;
+        break;
+      }
+    }
+
+    // TODO: Add logic for wakeup, src reg rdy update
+
+    if(is_enough_entries) {
+      uint8_t bundle_count = 0;
+      for(auto &itr: iq) {
+        if(!itr.valid) { // valid bit = 0, means free entry
+          itr.valid = true;
+          itr.dst_tag = DI_REG[bundle_count].dst;
+          itr.rs1_rdy = DI_REG[bundle_count].src1_rdy;
+          itr.rs2_rdy = DI_REG[bundle_count].src2_rdy;
+
+          if(!DI_REG[bundle_count].src1_rdy)
+            itr.rs1_tag = DI_REG[bundle_count].src1;
+
+          if(!DI_REG[bundle_count].src2_rdy)
+            itr.rs2_tag = DI_REG[bundle_count].src2;
+
+          ++bundle_count;
+        }
+
+        if(bundle_count == DI_REG.size())
+          break;
+      }
+      DI_REG.clear();
+    }
+  }
+}
