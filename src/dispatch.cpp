@@ -41,7 +41,7 @@ void Fetch(FILE *FP, unsigned long int width) {
     while(line_count < width) {
       if(fscanf(FP, "%lx %d %d %d %d", &pc, &op_type, &dest, &src1, &src2) != EOF) {
         printf("%lx %d %d %d %d\n", pc, op_type, dest, src1, src2);
-        DE_REG.push_back({pc, op_type, dest, src1, src2, false, false});
+        DE_REG.push_back({pc, op_type, dest, src1, src2, false, false, total_instruction_count});
         ++line_count;
         ++total_instruction_count;
       } else {
@@ -140,6 +140,8 @@ void Dispatch() {
 
           if(!DI_REG[bundle_count].src2_rdy)
             itr.rs2_tag = DI_REG[bundle_count].src2;
+
+          itr.age = DI_REG[bundle_count].age;
 
           ++bundle_count;
         }

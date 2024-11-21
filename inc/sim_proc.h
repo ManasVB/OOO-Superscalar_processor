@@ -24,6 +24,8 @@ typedef struct {
 
     bool rs2_rdy;
     uint32_t rs2_tag;
+
+    uint64_t age;
 } IQ;
 
 typedef struct {
@@ -39,4 +41,5 @@ typedef struct {
     int src2;
     bool src1_rdy;
     bool src2_rdy;
+    uint64_t age;
 } Bundle;
