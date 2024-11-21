@@ -17,6 +17,8 @@ extern vector<ROB> rob;
 extern vector<RMT> rmt;
 extern vector<IQ> iq;
 
+extern vector<uint32_t> wakeup;
+
 extern bool trace_read_complete;
 extern uint64_t total_instruction_count;
 extern uint32_t head, tail;
@@ -111,6 +113,16 @@ void RegRead() {
   if(!RR_REG.empty() && DI_REG.empty()) {
 
     // TODO: Add logic for wakeup, src reg rdy update
+    if(!wakeup.empty()) {
+      for(auto &instr : RR_REG) {
+          for(auto &wakeup_dst: wakeup) {
+            if(!instr.src1_rdy && instr.src1 == wakeup_dst)
+              instr.src1_rdy = true;
+            if(!instr.src2_rdy && instr.src2 == wakeup_dst)
+              instr.src2_rdy = true;
+          }
+      }
+    }
 
     DI_REG = RR_REG;
     RR_REG.clear();
@@ -133,14 +145,26 @@ void Dispatch() {
       }
     }
 
-    // TODO: Add logic for wakeup, src reg rdy update
-
     if(is_enough_entries) {
       uint8_t bundle_count = 0;
       for(auto &itr: iq) {
         if(!itr.valid) { // valid bit = 0, means free entry
           itr.valid = true;
           itr.dst_tag = DI_REG[bundle_count].dst;
+
+          // check wakeup from execute
+          if(!wakeup.empty()) {
+            for(auto &wakeup_dst: wakeup) {
+              if(!(DI_REG[bundle_count].src1_rdy) && DI_REG[bundle_count].src1 == wakeup_dst) {
+                DI_REG[bundle_count].src1_rdy = true;
+              }
+
+              if(!(DI_REG[bundle_count].src2_rdy) && DI_REG[bundle_count].src2 == wakeup_dst) {
+                DI_REG[bundle_count].src2_rdy = true;
+              }              
+            }
+          }
+
           itr.rs1_rdy = DI_REG[bundle_count].src1_rdy;
           itr.rs2_rdy = DI_REG[bundle_count].src2_rdy;
 
