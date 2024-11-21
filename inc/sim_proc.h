@@ -37,4 +37,6 @@ typedef struct {
     int dst;
     int src1; 
     int src2;
+    bool src1_rdy;
+    bool src2_rdy;
 } Bundle;

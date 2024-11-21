@@ -15,7 +15,6 @@ using namespace std;
 vector<RMT> rmt;
 vector<ROB> rob;
 vector<IQ> iq;
-vector<vector<pipeline_regs_d>> bundle(4);
 
 uint32_t head = 0, tail = 0;
 
@@ -79,6 +78,10 @@ int main (int argc, char* argv[]) {
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
     do {
+
+        Dispatch();
+
+        RegRead();
 
         Rename(params.rob_size);
 
