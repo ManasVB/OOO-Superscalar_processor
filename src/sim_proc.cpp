@@ -79,6 +79,8 @@ int main (int argc, char* argv[]) {
 
     do {
 
+        Issue();
+
         Dispatch();
 
         RegRead();

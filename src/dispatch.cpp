@@ -2,6 +2,7 @@
 #include <iostream>
 #include <cstdint>
 #include <vector>
+#include <algorithm>
 
 #include "dispatch.h"
 
@@ -40,7 +41,7 @@ void Fetch(FILE *FP, unsigned long int width) {
   if(DE_REG.empty() && !trace_read_complete) {
     while(line_count < width) {
       if(fscanf(FP, "%lx %d %d %d %d", &pc, &op_type, &dest, &src1, &src2) != EOF) {
-        printf("%lx %d %d %d %d\n", pc, op_type, dest, src1, src2);
+        // printf("%lx %d %d %d %d\n", pc, op_type, dest, src1, src2);
         DE_REG.push_back({pc, op_type, dest, src1, src2, false, false, total_instruction_count});
         ++line_count;
         ++total_instruction_count;
@@ -149,6 +150,15 @@ void Dispatch() {
         if(bundle_count == DI_REG.size())
           break;
       }
+
+      // Sort the issue queue according on age in ascending order
+      std::sort(iq.begin(), iq.end(), [](const IQ &a, const IQ&b) {return a.age < b.age;});
+
+      // for(auto &instr: iq) {
+      //   cout << "valid: " << instr.valid << " dst_tag: " << instr.dst_tag << " age: " << instr.age << endl;
+      // }
+      // cout << endl;
+
       DI_REG.clear();
     }
   }
