@@ -80,6 +80,7 @@ void Execute() {
   }
 }
 
+// Process the writeback bundle in WBFor each instruction in WB, mark the instruction as “ready” in its entry in the ROB.
 void Writeback() {
   for(auto &instr: WB_Reg) {
     if(instr.valid) {
