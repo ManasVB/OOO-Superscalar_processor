@@ -17,4 +17,4 @@ extern void Execute(void);
 
 extern void Writeback(void);
 
-extern void Retire(void);
+extern void Retire(unsigned long int, unsigned long int);

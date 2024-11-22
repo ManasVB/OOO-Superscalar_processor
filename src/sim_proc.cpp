@@ -17,6 +17,7 @@ vector<ROB> rob;
 vector<IQ> iq;
 
 uint32_t head = 0, tail = 0;
+bool is_rob_full = false;
 
 uint8_t num_regs = 67;  // No. of registers in the ISA (r0-r66)
 uint64_t total_cycle_count = 0;
@@ -87,6 +88,8 @@ int main (int argc, char* argv[]) {
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
 
     do {
+
+        Retire(params.rob_size, params.width);
 
         Writeback();
 
