@@ -100,11 +100,20 @@ void Retire(unsigned long int rob_size, unsigned long int width) {
   while((head != tail) || is_rob_full) {
     if(rob[head].rdy) {
 
+      // // Update RMT
+      // for(auto &itr: rmt) {
+      //   if(itr.valid && itr.ROB_tag == head) {
+      //     itr.valid = false;
+      //     break;
+      //   }
+      // }
+      
       // Update RMT
-      for(auto &itr: rmt) {
-        if(itr.valid && itr.ROB_tag == head) {
-          itr.valid = false;
-          break;
+      int check_rmt_entry = rob[head].dst;
+
+      if(check_rmt_entry != -1) {
+        if(rmt[check_rmt_entry].valid && rmt[check_rmt_entry].ROB_tag == head) {
+          rmt[check_rmt_entry].valid = false;
         }
       }
       
