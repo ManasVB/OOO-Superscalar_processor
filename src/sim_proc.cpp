@@ -23,7 +23,9 @@ uint8_t num_regs = 67;  // No. of registers in the ISA (r0-r66)
 uint64_t total_cycle_count = 0;
 uint64_t total_instruction_count = 0;
 int64_t final_instruction_number = -1;
+
 bool trace_read_complete = false;
+bool is_done = false;
 
 extern vector<pipeline_regs_e> execute_list;
 extern vector<pipeline_regs_e> WB_Reg;

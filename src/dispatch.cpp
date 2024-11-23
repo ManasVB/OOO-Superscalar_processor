@@ -20,6 +20,8 @@ extern vector<IQ> iq;
 extern vector<uint32_t> wakeup;
 
 extern bool trace_read_complete;
+extern bool is_done;
+
 extern uint64_t total_instruction_count;
 extern uint64_t total_cycle_count;
 extern int64_t final_instruction_number;
@@ -189,7 +191,6 @@ void Dispatch() {
 
           // Dispatch stage begin cycle
           DI_REG[bundle_count].begin_cycle[4] = total_cycle_count;
-
 
           // Check for wakeup
           if(!wakeup.empty()) {
