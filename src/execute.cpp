@@ -35,18 +35,16 @@ void Issue(unsigned long int width) {
       // Issue stage begin cycle
       instr.payload.begin_cycle[5] = total_cycle_count;
       
-      // Remove instruction from the IQ
-      instr.valid = false;
-
       // Add to the execution list
       for(auto &exec_itr: execute_list) {
         if(!exec_itr.valid) { // valid means free entry
-          exec_itr.valid = true;
-          exec_itr.payload = instr.payload;
+          exec_itr = instr;
           break;
         }
       }
-      ++instructions_removed;
+
+      // Remove instruction from the IQ
+      instr.valid = false;
     }
 
     if(instructions_removed > width)
@@ -56,13 +54,57 @@ void Issue(unsigned long int width) {
 
 void Execute() {
 
+  uint8_t WB_Reg_Counter = 0;
+  // wakeup.clear();
+
+  for(auto &instr: execute_list) {
+    if(instr.valid) {
+      if(instr.payload.latency == 1) {
+
+        WB_Reg[WB_Reg_Counter] = instr;
+        ++WB_Reg_Counter;
+
+        // Remove from execute_list
+        instr.valid = false;
+
+        // Wakeup dependent sources in the Issue Queue
+        for(auto &iq_itr: iq) {
+          if(iq_itr.valid && !iq_itr.payload.src1_rdy && iq_itr.payload.src1 == instr.payload.dest) {
+            iq_itr.payload.src1_rdy = true;
+          }
+
+          if(iq_itr.valid && !iq_itr.payload.src2_rdy && iq_itr.payload.src2 == instr.payload.dest) {
+            iq_itr.payload.src2_rdy = true;
+          }
+        }
+
+        // Send a wakeup signal to RR and DI
+        wakeup.push_back(instr.payload.dest);
+
+      } else if(instr.payload.latency > 1) {
+        --(instr.payload.latency);
+      }
+    }
+  }
 }
 
 // Process the writeback bundle in WBFor each instruction in WB, mark the instruction as “ready” in its entry in the ROB.
 void Writeback() {
+  for(auto &instr: WB_Reg) {
+    if(instr.valid) {
 
+      // Writeback stage begin cycle
+      instr.payload.begin_cycle[7] = total_cycle_count;
+
+      // WB stage begin cycle = Ex stage begin cycle + latency
+      instr.payload.begin_cycle[6] = total_cycle_count - instr.payload.latency;
+
+      rob[instr.payload.dest].rdy = true;
+      instr.valid = false;
+    }
+  }
 }
 
 void Retire(unsigned long int rob_size, unsigned long int width) {
-
+  
 }
