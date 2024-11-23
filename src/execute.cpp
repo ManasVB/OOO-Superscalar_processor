@@ -2,7 +2,7 @@
 #include <iostream>
 #include <stdint.h>
 #include <vector>
-
+#include <algorithm>
 #include "execute.h"
 
 using namespace std;
@@ -56,7 +56,7 @@ void Issue(unsigned long int width) {
 void Execute() {
   
   uint8_t WB_Reg_Counter = 0;
-  wakeup.clear();
+  // wakeup.clear();
 
   // Remove the instruction from the execute_list, which is finishing and add to WB_Reg
   for(auto &instr: execute_list) {
@@ -122,6 +122,8 @@ void Retire(unsigned long int rob_size, unsigned long int width) {
           rmt[check_rmt_entry].valid = false;
         }
       }
+
+      wakeup.erase(std::remove(wakeup.begin(), wakeup.end(), head), wakeup.end());
 
       printf("%lu  ", pl_print.age);
       printf("fu{%d}  ", pl_print.op_type);
