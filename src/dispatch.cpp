@@ -125,14 +125,41 @@ void Rename(unsigned long int rob_size) {
       }
 
       RR_REG = RN_REG;
-      RN.clear();
+      RN_REG.clear();
     }
   }
 }
 
 void RegRead() {
+  if(!RR_REG.empty()) {
+    if(DI_REG.empty()) {
+      for(auto &instr: RR_REG) {
+         // RegRead stage begin cycle
+        instr.begin_cycle[3] = total_cycle_count;
 
+        if(!wakeup.empty()) {
+          for(auto &wakeup_itr: wakeup) {
+            if(!instr.src1_rdy && instr.src1 == (int)wakeup_itr) {
+              instr.src1_rdy = true;
+              break;
+            }
+          }
+
+          for(auto &wakeup_itr: wakeup) {
+            if(!instr.src2_rdy && instr.src2 == (int)wakeup_itr) {
+              instr.src2_rdy = true;
+              break;
+            }
+          }
+        }
+      }
+
+      DI_REG = RR_REG;
+      RR_REG.clear();
+    }
+  }
 }
+
 
 void Dispatch() {
 
