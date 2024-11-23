@@ -11,38 +11,33 @@ typedef struct proc_params{
 }proc_params;
 
 typedef struct {
+    uint64_t age;
+    int op_type;
+    uint8_t latency;
+    int dest;
+
+    bool src1_rdy;
+    int src1; 
+    
+    bool src2_rdy;
+    int src2;
+
+    uint64_t begin_cycle[9]; //Begin cycle for all the stages
+
+} Payload;
+
+typedef struct {
     bool rdy;
-    int dst;    // R0-R66, -1 if no dest register
+    int dest;    // R0-R66, -1 if no dest register
+    Payload metadata;
 } ROB;
 
 typedef struct {
     bool valid;
-    uint32_t dst_tag;
-
-    bool rs1_rdy;
-    uint32_t rs1_tag;
-
-    bool rs2_rdy;
-    uint32_t rs2_tag;
-
-    uint64_t age;
-
-    uint8_t latency;
+    Payload payload;
 } IQ;
 
 typedef struct {
     bool valid;
     uint32_t ROB_tag;
 } RMT;
-
-typedef struct {
-    uint64_t pc;
-    int op_type;
-    int dst;
-    int src1; 
-    int src2;
-    bool src1_rdy;
-    bool src2_rdy;
-    uint64_t age;
-    uint8_t latency;
-} Bundle;
