@@ -22,6 +22,7 @@ extern vector<uint32_t> wakeup;
 extern bool trace_read_complete;
 extern uint64_t total_instruction_count;
 extern uint32_t head, tail;
+extern bool is_rob_full;
 
 /* bundle is a matrix of size 4 x width; for 4 pipeline registers in the dispatch engine
  * The no. of rows is 4 because there are 4 pipeline regs in this engine: DE, RN, RR, DI
@@ -101,6 +102,10 @@ void Rename(unsigned long int rob_size) {
       instr.dst = tail; //dst now becomes dst_tag
 
       tail = (tail + 1)%rob_size;
+
+      if(head == tail) {
+        is_rob_full = true;
+      }
     }
     
     RR_REG = RN_REG;

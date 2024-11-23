@@ -16,6 +16,9 @@ extern vector<uint32_t> wakeup;
 vector<pipeline_regs_e> execute_list;
 vector<pipeline_regs_e> WB_Reg;
 
+extern uint32_t head, tail;
+extern bool is_rob_full;
+
 // Issue up to WIDTH oldest instructions from the IQ
 void Issue(unsigned long int width) {
   uint8_t instrs_removed = 0;
@@ -90,4 +93,41 @@ void Writeback() {
   }
 }
 
-void Retire() {}
+void Retire(unsigned long int rob_size, unsigned long int width) {
+
+  uint32_t instructions_retired = 0;
+
+  while((head != tail) || is_rob_full) {
+    if(rob[head].rdy) {
+
+      // // Update RMT
+      // for(auto &itr: rmt) {
+      //   if(itr.valid && itr.ROB_tag == head) {
+      //     itr.valid = false;
+      //     break;
+      //   }
+      // }
+      
+      // Update RMT
+      int check_rmt_entry = rob[head].dst;
+
+      if(check_rmt_entry != -1) {
+        if(rmt[check_rmt_entry].valid && rmt[check_rmt_entry].ROB_tag == head) {
+          rmt[check_rmt_entry].valid = false;
+        }
+      }
+      
+      // Increment head pointer
+      head = (head + 1)%rob_size;
+      
+      if(is_rob_full)
+        is_rob_full = false;
+
+      ++instructions_retired;
+    } else
+      break;
+
+    if(instructions_retired == width)
+      break;
+  }
+}
