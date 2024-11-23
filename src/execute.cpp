@@ -23,6 +23,8 @@ extern uint64_t total_instruction_count;
 extern uint64_t total_cycle_count;
 extern int64_t final_instruction_number;
 
+extern bool is_done;
+
 // Issue up to WIDTH oldest instructions from the IQ
 void Issue(unsigned long int width) {
 
@@ -55,7 +57,7 @@ void Issue(unsigned long int width) {
 void Execute() {
 
   uint8_t WB_Reg_Counter = 0;
-  // wakeup.clear();
+  wakeup.clear();
 
   for(auto &instr: execute_list) {
     if(instr.valid) {
@@ -106,5 +108,41 @@ void Writeback() {
 }
 
 void Retire(unsigned long int rob_size, unsigned long int width) {
-  
+
+  uint32_t instructions_retired = 0;
+
+  while((head != tail) || is_rob_full) {
+    if(rob[head].rdy) {
+
+      Payload *pl_print = rob[head].metadata;
+      
+      // Update RMT
+      int check_rmt_entry = rob[head].dest;
+
+      if(check_rmt_entry != -1) {
+        if(rmt[check_rmt_entry].valid && rmt[check_rmt_entry].ROB_tag == head) {
+          rmt[check_rmt_entry].valid = false;
+        }
+      }
+
+      printf("%lu  ", pl_print->age);
+      printf("fu{%d}  ", pl_print->op_type);
+      printf("src{%d,%d}  ", pl_print->src1, pl_print->src2);
+      printf("dst{%d}  ", pl_print->dest);
+
+      if((rob[head].metadata)->age == (unsigned)final_instruction_number) {is_done = true; break;}
+
+      // Increment head pointer
+      head = (head + 1)%rob_size;
+      
+      if(is_rob_full)
+        is_rob_full = false;
+
+      ++instructions_retired;
+    } else
+      break;
+
+    if(instructions_retired == width)
+      break;
+  }
 }

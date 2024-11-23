@@ -122,5 +122,5 @@ static bool Advance_Cycle () {
     
     // printf("total cycle count: %lu \n",total_cycle_count);
 
-    return !trace_read_complete;
+    return (!trace_read_complete || !is_done);
 }
