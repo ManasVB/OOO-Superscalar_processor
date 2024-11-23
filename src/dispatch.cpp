@@ -74,6 +74,8 @@ void Decode() {
   if(!DE_REG.empty()) {
     if(RN_REG.empty()) {
       for(auto &instr: DE_REG) {
+
+        // Decode stage begin cycle
         instr.begin_cycle[1] = total_cycle_count;
       }
 
@@ -84,11 +86,46 @@ void Decode() {
 }
 
 void Rename(unsigned long int rob_size) {
+
   if(!RN_REG.empty()) {
     bool is_rob_free = (tail + RN_REG.size())%rob_size > head;
 
     if(RR_REG.empty() && is_rob_free) {
-      
+      for(auto &instr: RN_REG) {
+
+        // Rename stage begin cycle
+        instr.begin_cycle[2] = total_cycle_count;
+
+        // allocate an entry in the ROB for the instruction
+        rob[tail] = {.rdy = false, .dest = instr.dest, .metadata = &instr};
+
+        // rename its source registers
+        if(instr.src1 == -1) {
+          instr.src1_rdy = true;
+        } else {
+          (rmt[instr.src1].valid) ? instr.src1 = rmt[instr.src1].ROB_tag : instr.src1_rdy = true;
+        }
+
+        if(instr.src2 == -1) {
+          instr.src2_rdy = true;
+        } else {
+          (rmt[instr.src2].valid) ? instr.src2 = rmt[instr.src2].ROB_tag : instr.src2_rdy = true;
+        }
+
+        if(instr.dest != -1) {
+          rmt[instr.dest] = {.valid = true, .ROB_tag = tail};
+        }
+        instr.dest = tail; //dst now becomes dst_tag
+
+        tail = (tail + 1)%rob_size;
+
+        if(head == tail) {
+          is_rob_full = true;
+        }
+      }
+
+      RR_REG = RN_REG;
+      RN.clear();
     }
   }
 }
