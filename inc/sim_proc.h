@@ -11,8 +11,19 @@ typedef struct proc_params{
 }proc_params;
 
 typedef struct {
+    uint64_t age;
+    uint8_t latency;
+    int op_type;
+    int dst;
+    int src1; 
+    int src2;
+    uint64_t begincycle[9]; // begin-cycle of a given pipeline stage 
+} Payload;
+
+typedef struct {
     bool rdy;
     int dst;    // R0-R66, -1 if no dest register
+    Payload payload;
 } ROB;
 
 typedef struct {
@@ -45,4 +56,6 @@ typedef struct {
     bool src2_rdy;
     uint64_t age;
     uint8_t latency;
+    uint64_t fetch_begin;
+    uint64_t decode_begin;
 } Bundle;

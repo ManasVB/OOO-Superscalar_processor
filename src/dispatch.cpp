@@ -21,8 +21,11 @@ extern vector<uint32_t> wakeup;
 
 extern bool trace_read_complete;
 extern uint64_t total_instruction_count;
+int64_t final_instruction_count = -1;
 extern uint32_t head, tail;
 extern bool is_rob_full;
+
+extern uint64_t total_cycle_count;
 
 /* bundle is a matrix of size 4 x width; for 4 pipeline registers in the dispatch engine
  * The no. of rows is 4 because there are 4 pipeline regs in this engine: DE, RN, RR, DI
@@ -53,10 +56,11 @@ void Fetch(FILE *FP, unsigned long int width) {
           latency = 5;
 
         // printf("%lx %d %d %d %d\n", pc, op_type, dest, src1, src2);
-        DE_REG.push_back({pc, op_type, dest, src1, src2, false, false, total_instruction_count, latency});
+        DE_REG.push_back({pc, op_type, dest, src1, src2, false, false, total_instruction_count, latency, total_cycle_count, 0});
         ++line_count;
         ++total_instruction_count;
       } else {
+        final_instruction_count = total_instruction_count;
         trace_read_complete = true;
         break;
       }
@@ -70,6 +74,9 @@ void Decode() {
    * from DE to RN. Else do nothing.
   */ 
   if(!DE_REG.empty() && RN_REG.empty()) {
+      for(auto &instr: DE_REG) {
+        instr.decode_begin = total_cycle_count;
+      }
       RN_REG = DE_REG;
       DE_REG.clear();
   }
@@ -90,7 +97,18 @@ void Rename(unsigned long int rob_size) {
       // allocate an entry in the ROB for the instruction
       rob[tail] = {.rdy = false, .dst = instr.dst};
 
+      rob[tail].payload = {.age = instr.age, .latency = instr.latency ,.op_type = instr.op_type, .dst = instr.dst, \
+        .src1 = instr.src1, .src2 = instr.src2, .begincycle = {instr.fetch_begin, instr.decode_begin, \
+        total_cycle_count, 0}};
+
+      // rob[tail].payload.begincycle[6] = instr.latency;
+
       // rename its source registers if not from ARF, else set them as ready
+      if(instr.src1 == -1)
+        instr.src1_rdy = true;
+      if(instr.src2 == -1)
+        instr.src2_rdy = true;
+
       (rmt[instr.src1].valid) ? instr.src1 = rmt[instr.src1].ROB_tag : instr.src1_rdy = true;
 
       (rmt[instr.src2].valid) ? instr.src2 = rmt[instr.src2].ROB_tag : instr.src2_rdy = true;
@@ -117,9 +135,13 @@ void RegRead() {
 
   if(!RR_REG.empty() && DI_REG.empty()) {
 
-    // check wakeup from execute
-    if(!wakeup.empty()) {
-      for(auto &instr : RR_REG) {
+    
+    for(auto &instr : RR_REG) {
+
+      rob[instr.dst].payload.begincycle[3] = total_cycle_count;
+
+      // check wakeup from execute
+      if(!wakeup.empty()) {
         for(auto &wakeup_dst: wakeup) {
           if(!instr.src1_rdy && instr.src1 == (int)wakeup_dst)
             instr.src1_rdy = true;
@@ -179,6 +201,8 @@ void Dispatch() {
           itr.age = DI_REG[bundle_count].age;
 
           itr.latency = DI_REG[bundle_count].latency;
+          
+          rob[DI_REG[bundle_count].dst].payload.begincycle[4] = total_cycle_count;
 
           ++bundle_count;
         }

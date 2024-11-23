@@ -18,6 +18,7 @@ vector<IQ> iq;
 
 uint32_t head = 0, tail = 0;
 bool is_rob_full = false;
+bool is_done = false;
 
 uint8_t num_regs = 67;  // No. of registers in the ISA (r0-r66)
 uint64_t total_cycle_count = 0;
@@ -120,5 +121,5 @@ static bool Advance_Cycle () {
     
     // printf("total cycle count: %lu \n",total_cycle_count);
 
-    return !trace_read_complete;
+    return (!trace_read_complete || !is_done);
 }
