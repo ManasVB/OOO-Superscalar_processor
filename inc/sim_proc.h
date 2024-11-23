@@ -34,6 +34,7 @@ typedef struct {
 
 typedef struct {
     bool valid;
+    uint64_t age;
     Payload payload;
 } IQ;
 

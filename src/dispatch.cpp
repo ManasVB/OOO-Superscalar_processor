@@ -134,7 +134,7 @@ void RegRead() {
   if(!RR_REG.empty()) {
     if(DI_REG.empty()) {
       for(auto &instr: RR_REG) {
-         // RegRead stage begin cycle
+        // RegRead stage begin cycle
         instr.begin_cycle[3] = total_cycle_count;
 
         if(!wakeup.empty()) {
@@ -160,7 +160,69 @@ void RegRead() {
   }
 }
 
-
 void Dispatch() {
+  if(!DI_REG.empty()) {
 
+    uint8_t iq_free_entries = 0;
+    bool is_iq_free = false;
+
+    //check for free entries in the IQ
+    for(auto &iq_itr: iq) {
+      if(!iq_itr.valid)
+        ++iq_free_entries;
+
+      if(iq_free_entries >= DI_REG.size()) {
+        is_iq_free = true;
+        break;
+      }
+    }
+
+    
+    if(is_iq_free) {
+
+      uint8_t bundle_count = 0;
+
+      for(auto &iq_itr: iq) {
+
+         if(!iq_itr.valid) {
+          iq_itr.valid = true;
+
+          // Dispatch stage begin cycle
+          DI_REG[bundle_count].begin_cycle[4] = total_cycle_count;
+
+
+          // Check for wakeup
+          if(!wakeup.empty()) {
+            for(auto &wakeup_itr: wakeup) {
+              if(!DI_REG[bundle_count].src1_rdy && DI_REG[bundle_count].src1 == (int)wakeup_itr) {
+                DI_REG[bundle_count].src1_rdy = true;
+                break;
+              }
+            }
+
+            for(auto &wakeup_itr: wakeup) {
+              if(!DI_REG[bundle_count].src2_rdy && DI_REG[bundle_count].src2 == (int)wakeup_itr) {
+                DI_REG[bundle_count].src2_rdy = true;
+                break;
+              }
+            }
+          }
+
+          // Add to IQ
+          iq_itr.age = DI_REG[bundle_count].age;
+          iq_itr.payload = DI_REG[bundle_count];
+
+          ++bundle_count;
+         }
+
+        if(bundle_count == DI_REG.size())
+          break; 
+      }
+
+      // Sort the issue queue according on age in ascending order
+      std::sort(iq.begin(), iq.end(), [](const IQ &a, const IQ&b) {return a.age < b.age;});
+      
+      DI_REG.clear();
+    }
+  }
 }
