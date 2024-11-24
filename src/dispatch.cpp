@@ -99,19 +99,19 @@ void Rename(unsigned long int rob_size) {
         instr.begin_cycle[2] = total_cycle_count;
 
         // allocate an entry in the ROB for the instruction
-        rob[tail] = {.rdy = false, .dest = instr.dest, .metadata = &instr};
+        rob[tail] = {.rdy = false, .dest = instr.dest, .metadata = instr};
 
         // rename its source registers
         if(instr.src1 == -1) {
           instr.src1_rdy = true;
         } else {
-          (rmt[instr.src1].valid) ? instr.src1 = rmt[instr.src1].ROB_tag : instr.src1_rdy = true;
+          instr.src1 = (rmt[instr.src1].valid) ? rmt[instr.src1].ROB_tag : -1;
         }
 
         if(instr.src2 == -1) {
           instr.src2_rdy = true;
         } else {
-          (rmt[instr.src2].valid) ? instr.src2 = rmt[instr.src2].ROB_tag : instr.src2_rdy = true;
+          instr.src2 = (rmt[instr.src2].valid) ? rmt[instr.src2].ROB_tag : -1;
         }
 
         if(instr.dest != -1) {
@@ -138,6 +138,10 @@ void RegRead() {
       for(auto &instr: RR_REG) {
         // RegRead stage begin cycle
         instr.begin_cycle[3] = total_cycle_count;
+
+        rob[instr.dest].metadata = instr;
+
+        
 
         if(!wakeup.empty()) {
           for(auto &wakeup_itr: wakeup) {
@@ -191,6 +195,8 @@ void Dispatch() {
 
           // Dispatch stage begin cycle
           DI_REG[bundle_count].begin_cycle[4] = total_cycle_count;
+
+          rob[DI_REG[bundle_count].dest].metadata = DI_REG[bundle_count];
 
           // Check for wakeup
           if(!wakeup.empty()) {

@@ -29,7 +29,7 @@ typedef struct {
 typedef struct {
     bool rdy;
     int dest;    // R0-R66, -1 if no dest register
-    Payload *metadata;
+    Payload metadata;
 } ROB;
 
 typedef struct {
