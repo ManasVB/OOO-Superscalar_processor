@@ -99,18 +99,14 @@ void Rename(unsigned long int rob_size) {
         instr.begin_cycle[2] = total_cycle_count;
 
         // allocate an entry in the ROB for the instruction
-        rob[tail] = {.rdy = false, .dest = instr.dest, .metadata = instr};
+        rob[tail] = {.rdy = false, .dest = instr.dest, .src1 = instr.src1, .src2 = instr.src2 ,.metadata = instr};
 
         // rename its source registers
-        if(instr.src1 == -1) {
-          instr.src1_rdy = true;
-        } else {
+        if(instr.src1 != -1) {
           instr.src1 = (rmt[instr.src1].valid) ? rmt[instr.src1].ROB_tag : -1;
         }
 
-        if(instr.src2 == -1) {
-          instr.src2_rdy = true;
-        } else {
+        if(instr.src2 != -1) {
           instr.src2 = (rmt[instr.src2].valid) ? rmt[instr.src2].ROB_tag : -1;
         }
 
@@ -141,7 +137,13 @@ void RegRead() {
 
         rob[instr.dest].metadata = instr;
 
-        
+        if(instr.src1 == -1) {
+          instr.src1_rdy = true;
+        }
+
+        if(instr.src2 == -1) {
+          instr.src2_rdy = true;
+        }
 
         if(!wakeup.empty()) {
           for(auto &wakeup_itr: wakeup) {

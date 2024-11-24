@@ -2,6 +2,8 @@
 #include <iostream>
 #include <stdint.h>
 #include <vector>
+#include <algorithm>
+#include <cassert>
 
 #include "execute.h"
 
@@ -137,15 +139,19 @@ void Retire(unsigned long int rob_size, unsigned long int width) {
       int check_rmt_entry = rob[head].dest;
 
       if(check_rmt_entry != -1) {
-        if(rmt[check_rmt_entry].valid && rmt[check_rmt_entry].ROB_tag == head) {
+        assert(rmt[check_rmt_entry].valid);
+        
+        if(rmt[check_rmt_entry].ROB_tag == head) {
           rmt[check_rmt_entry].valid = false;
         }
       }
 
+      wakeup.erase(std::remove(wakeup.begin(), wakeup.end(), head), wakeup.end());
+
       printf("%lu  ", pl_print.age);
       printf("fu{%d}  ", pl_print.op_type);
-      printf("src{%d,%d}  ", pl_print.src1, pl_print.src2);
-      printf("dst{%d}  ", pl_print.dest);
+      printf("src{%d,%d}  ", rob[head].src1, rob[head].src2);
+      printf("dst{%d}  ", rob[head].dest);
       printf("FE{%lu,%lu} ", pl_print.begin_cycle[0], (pl_print.begin_cycle[1] - pl_print.begin_cycle[0]));
       printf("DE{%lu,%lu}  ", pl_print.begin_cycle[1], (pl_print.begin_cycle[2] - pl_print.begin_cycle[1]));
       printf("RN{%lu,%lu}  ", pl_print.begin_cycle[2], (pl_print.begin_cycle[3] - pl_print.begin_cycle[2]));
