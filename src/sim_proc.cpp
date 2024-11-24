@@ -22,7 +22,10 @@ bool is_rob_full = false;
 uint8_t num_regs = 67;  // No. of registers in the ISA (r0-r66)
 uint64_t total_cycle_count = 0;
 uint64_t total_instruction_count = 0;
+int64_t final_instruction_number = -1;
+
 bool trace_read_complete = false;
+bool is_done = false;
 
 extern vector<pipeline_regs_e> execute_list;
 extern vector<pipeline_regs_e> WB_Reg;
@@ -69,12 +72,11 @@ int main (int argc, char* argv[]) {
     }
 
     // Setup ROB, RMT and IQ
-    rob.resize(params.rob_size, {false, 0});
-    iq.resize(params.iq_size, {false, 0, false, 0, false, 0});
-    rmt.resize(num_regs,{false, 0});
+    rob.resize(params.rob_size, {0});
+    iq.resize(params.iq_size, {0});
+    rmt.resize(num_regs,{0});
     
     execute_list.resize(params.width*5, {0});
-    
     WB_Reg.resize(params.width*5, {0});
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -120,5 +122,5 @@ static bool Advance_Cycle () {
     
     // printf("total cycle count: %lu \n",total_cycle_count);
 
-    return !trace_read_complete;
+    return (!trace_read_complete || !is_done);
 }

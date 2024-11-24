@@ -20,7 +20,12 @@ extern vector<IQ> iq;
 extern vector<uint32_t> wakeup;
 
 extern bool trace_read_complete;
+extern bool is_done;
+
 extern uint64_t total_instruction_count;
+extern uint64_t total_cycle_count;
+extern int64_t final_instruction_number;
+
 extern uint32_t head, tail;
 extern bool is_rob_full;
 
@@ -45,6 +50,8 @@ void Fetch(FILE *FP, unsigned long int width) {
   if(DE_REG.empty() && !trace_read_complete) {
     while(line_count < width) {
       if(fscanf(FP, "%lx %d %d %d %d", &pc, &op_type, &dest, &src1, &src2) != EOF) {
+
+        // Set latency according to op_type
         if(op_type == 0)
           latency = 1;
         else if(op_type == 1)
@@ -52,11 +59,12 @@ void Fetch(FILE *FP, unsigned long int width) {
         else
           latency = 5;
 
-        // printf("%lx %d %d %d %d\n", pc, op_type, dest, src1, src2);
-        DE_REG.push_back({pc, op_type, dest, src1, src2, false, false, total_instruction_count, latency});
+        DE_REG.push_back({total_instruction_count, op_type, latency, dest, false, src1, false, src2, {total_cycle_count,0}});
+
         ++line_count;
         ++total_instruction_count;
       } else {
+        final_instruction_number = total_instruction_count;
         trace_read_complete = true;
         break;
       }
@@ -65,136 +73,164 @@ void Fetch(FILE *FP, unsigned long int width) {
 }
 
 void Decode() {
+  if(!DE_REG.empty()) {
+    if(RN_REG.empty()) {
+      for(auto &instr: DE_REG) {
 
-  /* If RN is empty (can accept a new rename bundle), then advance the decode bundle
-   * from DE to RN. Else do nothing.
-  */ 
-  if(!DE_REG.empty() && RN_REG.empty()) {
+        // Decode stage begin cycle
+        instr.begin_cycle[1] = total_cycle_count;
+      }
+
       RN_REG = DE_REG;
       DE_REG.clear();
+    }
   }
 }
 
 void Rename(unsigned long int rob_size) {
 
-  // Check if ROB has enough free entries to accept the entire rename bundle
-  bool is_enough_entries = (tail + RN_REG.size())%rob_size > head;
-  
-  /* If RR is empty and enough entries exist, process the rename bundle and advance
-   * if from RN to RR. Else do nothing.
-  */
-  if(!RN_REG.empty() && RR_REG.empty() && is_enough_entries) {
+  if(!RN_REG.empty()) {
+    bool is_rob_free = (tail + RN_REG.size())%rob_size > head;
 
-    for(auto &instr: RN_REG) {
+    if(RR_REG.empty() && is_rob_free) {
+      for(auto &instr: RN_REG) {
 
-      // allocate an entry in the ROB for the instruction
-      rob[tail] = {.rdy = false, .dst = instr.dst};
+        // Rename stage begin cycle
+        instr.begin_cycle[2] = total_cycle_count;
 
-      // rename its source registers if not from ARF, else set them as ready
-      (rmt[instr.src1].valid) ? instr.src1 = rmt[instr.src1].ROB_tag : instr.src1_rdy = true;
+        // allocate an entry in the ROB for the instruction
+        rob[tail] = {.rdy = false, .dest = instr.dest, .src1 = instr.src1, .src2 = instr.src2 ,.metadata = instr};
 
-      (rmt[instr.src2].valid) ? instr.src2 = rmt[instr.src2].ROB_tag : instr.src2_rdy = true;
-      
-      // if destination register exist, update RMT and update instr dst with ROB_Tag
-      if(instr.dst != -1) {
-        rmt[instr.dst] = {.valid = true, .ROB_tag = tail};
+        // rename its source registers
+        if(instr.src1 != -1) {
+          instr.src1 = (rmt[instr.src1].valid) ? rmt[instr.src1].ROB_tag : -1;
+        }
+
+        if(instr.src2 != -1) {
+          instr.src2 = (rmt[instr.src2].valid) ? rmt[instr.src2].ROB_tag : -1;
+        }
+
+        if(instr.dest != -1) {
+          rmt[instr.dest] = {.valid = true, .ROB_tag = tail};
+        }
+        instr.dest = tail; //dst now becomes dst_tag
+
+        tail = (tail + 1)%rob_size;
+
+        if(head == tail) {
+          is_rob_full = true;
+        }
       }
-      instr.dst = tail; //dst now becomes dst_tag
 
-      tail = (tail + 1)%rob_size;
-
-      if(head == tail) {
-        is_rob_full = true;
-      }
+      RR_REG = RN_REG;
+      RN_REG.clear();
     }
-    
-    RR_REG = RN_REG;
-    RN_REG.clear();
   }
 }
 
 void RegRead() {
+  if(!RR_REG.empty()) {
+    if(DI_REG.empty()) {
+      for(auto &instr: RR_REG) {
+        // RegRead stage begin cycle
+        instr.begin_cycle[3] = total_cycle_count;
 
-  if(!RR_REG.empty() && DI_REG.empty()) {
+        rob[instr.dest].metadata = instr;
 
-    // check wakeup from execute
-    if(!wakeup.empty()) {
-      for(auto &instr : RR_REG) {
-        for(auto &wakeup_dst: wakeup) {
-          if(!instr.src1_rdy && instr.src1 == (int)wakeup_dst)
-            instr.src1_rdy = true;
-          if(!instr.src2_rdy && instr.src2 == (int)wakeup_dst)
-            instr.src2_rdy = true;
+        if(instr.src1 == -1) {
+          instr.src1_rdy = true;
+        }
+
+        if(instr.src2 == -1) {
+          instr.src2_rdy = true;
+        }
+
+        if(!wakeup.empty()) {
+          for(auto &wakeup_itr: wakeup) {
+            if(!instr.src1_rdy && instr.src1 == (int)wakeup_itr) {
+              instr.src1_rdy = true;
+              break;
+            }
+          }
+
+          for(auto &wakeup_itr: wakeup) {
+            if(!instr.src2_rdy && instr.src2 == (int)wakeup_itr) {
+              instr.src2_rdy = true;
+              break;
+            }
+          }
         }
       }
-    }
 
-    DI_REG = RR_REG;
-    RR_REG.clear();
+      DI_REG = RR_REG;
+      RR_REG.clear();
+    }
   }
 }
 
 void Dispatch() {
-
   if(!DI_REG.empty()) {
 
-    // Check if IQ has enough free entries to accept the entire dispatch bundle
-    bool is_enough_entries = false;
-    uint8_t free_entries_count = 0;
-    for(auto &itr: iq) {
-      if(!itr.valid)  // valid bit = 0, means free entry
-        ++free_entries_count;
-      if(free_entries_count >= DI_REG.size()) {
-        is_enough_entries = true;
+    uint8_t iq_free_entries = 0;
+    bool is_iq_free = false;
+
+    //check for free entries in the IQ
+    for(auto &iq_itr: iq) {
+      if(!iq_itr.valid)
+        ++iq_free_entries;
+
+      if(iq_free_entries >= DI_REG.size()) {
+        is_iq_free = true;
         break;
       }
     }
 
-    if(is_enough_entries) {
-      uint8_t bundle_count = 0;
-      for(auto &itr: iq) {
-        if(!itr.valid) { // valid bit = 0, means free entry
-          itr.valid = true;
-          itr.dst_tag = DI_REG[bundle_count].dst;
+    
+    if(is_iq_free) {
 
-          // check wakeup from execute
+      uint8_t bundle_count = 0;
+
+      for(auto &iq_itr: iq) {
+
+         if(!iq_itr.valid) {
+          iq_itr.valid = true;
+
+          // Dispatch stage begin cycle
+          DI_REG[bundle_count].begin_cycle[4] = total_cycle_count;
+
+          rob[DI_REG[bundle_count].dest].metadata = DI_REG[bundle_count];
+
+          // Check for wakeup
           if(!wakeup.empty()) {
-            for(auto &wakeup_dst: wakeup) {
-              if(!(DI_REG[bundle_count].src1_rdy) && DI_REG[bundle_count].src1 == (int)wakeup_dst)
+            for(auto &wakeup_itr: wakeup) {
+              if(!DI_REG[bundle_count].src1_rdy && DI_REG[bundle_count].src1 == (int)wakeup_itr) {
                 DI_REG[bundle_count].src1_rdy = true;
-              if(!(DI_REG[bundle_count].src2_rdy) && DI_REG[bundle_count].src2 == (int)wakeup_dst)
-                DI_REG[bundle_count].src2_rdy = true;              
+                break;
+              }
+            }
+
+            for(auto &wakeup_itr: wakeup) {
+              if(!DI_REG[bundle_count].src2_rdy && DI_REG[bundle_count].src2 == (int)wakeup_itr) {
+                DI_REG[bundle_count].src2_rdy = true;
+                break;
+              }
             }
           }
 
-          itr.rs1_rdy = DI_REG[bundle_count].src1_rdy;
-          itr.rs2_rdy = DI_REG[bundle_count].src2_rdy;
-
-          if(!DI_REG[bundle_count].src1_rdy)
-            itr.rs1_tag = DI_REG[bundle_count].src1;
-
-          if(!DI_REG[bundle_count].src2_rdy)
-            itr.rs2_tag = DI_REG[bundle_count].src2;
-
-          itr.age = DI_REG[bundle_count].age;
-
-          itr.latency = DI_REG[bundle_count].latency;
+          // Add to IQ
+          iq_itr.age = DI_REG[bundle_count].age;
+          iq_itr.payload = DI_REG[bundle_count];
 
           ++bundle_count;
-        }
+         }
 
         if(bundle_count == DI_REG.size())
-          break;
+          break; 
       }
 
       // Sort the issue queue according on age in ascending order
       std::sort(iq.begin(), iq.end(), [](const IQ &a, const IQ&b) {return a.age < b.age;});
-
-      // for(auto &instr: iq) {
-      //   cout << "valid: " << instr.valid << " dst_tag: " << instr.dst_tag << " age: " << instr.age << "rs ready: " << instr.rs1_rdy << instr.rs2_rdy << endl;
-      // }
-      // cout << endl;
-
+      
       DI_REG.clear();
     }
   }

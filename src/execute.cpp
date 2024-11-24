@@ -2,6 +2,8 @@
 #include <iostream>
 #include <stdint.h>
 #include <vector>
+#include <algorithm>
+#include <cassert>
 
 #include "execute.h"
 
@@ -19,66 +21,75 @@ vector<pipeline_regs_e> WB_Reg;
 extern uint32_t head, tail;
 extern bool is_rob_full;
 
+extern uint64_t total_instruction_count;
+extern uint64_t total_cycle_count;
+extern int64_t final_instruction_number;
+
+extern bool is_done;
+
 // Issue up to WIDTH oldest instructions from the IQ
 void Issue(unsigned long int width) {
-  uint8_t instrs_removed = 0;
 
-  for(auto &instr: iq) {
-     
-    if(instr.valid && instr.rs1_rdy && instr.rs2_rdy) {
+  uint8_t instructions_removed = 0;
 
-      // Remove the instruction from the IQ.
-      instr.valid = false;
+  for(auto &instr : iq) {
+    if(instr.valid && instr.payload.src1_rdy && instr.payload.src2_rdy) {
+      ++instructions_removed;
 
-      //Add the instruction to the execute_list
-      for(auto &itr: execute_list) {
-        if(!itr.valid) {  // not valid means free entry
-          itr = { .dst_tag = instr.dst_tag, .src1 = instr.rs1_tag, \
-            .src2 = instr.rs2_tag, .latency = instr.latency, .valid = true};
-          
+      // Issue stage begin cycle
+      instr.payload.begin_cycle[5] = total_cycle_count;
+
+      rob[instr.payload.dest].metadata = instr.payload;
+      
+      // Add to the execution list
+      for(auto &exec_itr: execute_list) {
+        if(!exec_itr.valid) { // valid means free entry
+          exec_itr = instr;
           break;
         }
       }
-      ++instrs_removed;
+
+      // Remove instruction from the IQ
+      instr.valid = false;
     }
-    if(instrs_removed == width) {
+
+    if(instructions_removed == width)
       break;
-    }
   }
 }
 
 void Execute() {
-  
+
   uint8_t WB_Reg_Counter = 0;
-  wakeup.clear();
+  // wakeup.clear();
 
-  // Remove the instruction from the execute_list, which is finishing and add to WB_Reg
   for(auto &instr: execute_list) {
-    if(instr.valid && instr.latency == 1) {
+    if(instr.valid) {
+      if(instr.payload.latency == 1) {
 
-      // Add to WB_Reg
-      WB_Reg[WB_Reg_Counter] = instr;
-      ++WB_Reg_Counter;
+        WB_Reg[WB_Reg_Counter] = instr;
+        ++WB_Reg_Counter;
 
-      // Remove from execute_list
-      instr.valid = false;
+        // Remove from execute_list
+        instr.valid = false;
 
-      // Wakeup dependent sources in the Issue Queue
-      for(auto &iq_itr: iq) {
-        if(iq_itr.valid && !iq_itr.rs1_rdy && iq_itr.rs1_tag == instr.dst_tag) {
-          iq_itr.rs1_rdy = true;
+        // Wakeup dependent sources in the Issue Queue
+        for(auto &iq_itr: iq) {
+          if(iq_itr.valid && !iq_itr.payload.src1_rdy && iq_itr.payload.src1 == instr.payload.dest) {
+            iq_itr.payload.src1_rdy = true;
+          }
+
+          if(iq_itr.valid && !iq_itr.payload.src2_rdy && iq_itr.payload.src2 == instr.payload.dest) {
+            iq_itr.payload.src2_rdy = true;
+          }
         }
 
-        if(iq_itr.valid && !iq_itr.rs2_rdy && iq_itr.rs2_tag == instr.dst_tag) {
-          iq_itr.rs2_rdy = true;
-        }
+        // Send a wakeup signal to RR and DI
+        wakeup.push_back(instr.payload.dest);
+
+      } else if(instr.payload.latency > 1) {
+        --(instr.payload.latency);
       }
-
-      // Send a wakeup signal to RR and DI
-      wakeup.push_back(instr.dst_tag);
-
-    } else if(instr.valid && instr.latency > 1) {
-      --(instr.latency);
     }
   }
 }
@@ -87,7 +98,29 @@ void Execute() {
 void Writeback() {
   for(auto &instr: WB_Reg) {
     if(instr.valid) {
-      rob[instr.dst_tag].rdy = true;
+
+      uint8_t latency = 0;
+
+      // Writeback stage begin cycle
+      instr.payload.begin_cycle[7] = total_cycle_count;
+
+      if(instr.payload.op_type == 0)
+        latency = 1;
+      else if(instr.payload.op_type == 1)
+        latency = 2;
+      else
+        latency = 5;
+
+      // WB stage begin cycle = Ex stage begin cycle + latency
+      instr.payload.begin_cycle[6] = total_cycle_count - latency;
+
+      // Retire stage begin cycle
+      instr.payload.begin_cycle[8] = instr.payload.begin_cycle[7] + 1;
+
+      rob[instr.payload.dest].metadata = instr.payload;
+
+      rob[instr.payload.dest].rdy = true;
+      // rob[instr.payload.dest].metadata = &(instr.payload);
       instr.valid = false;
     }
   }
@@ -100,23 +133,38 @@ void Retire(unsigned long int rob_size, unsigned long int width) {
   while((head != tail) || is_rob_full) {
     if(rob[head].rdy) {
 
-      // // Update RMT
-      // for(auto &itr: rmt) {
-      //   if(itr.valid && itr.ROB_tag == head) {
-      //     itr.valid = false;
-      //     break;
-      //   }
-      // }
+      Payload pl_print = (rob[head].metadata);
       
       // Update RMT
-      int check_rmt_entry = rob[head].dst;
+      int check_rmt_entry = rob[head].dest;
 
       if(check_rmt_entry != -1) {
-        if(rmt[check_rmt_entry].valid && rmt[check_rmt_entry].ROB_tag == head) {
+        assert(rmt[check_rmt_entry].valid);
+        
+        if(rmt[check_rmt_entry].ROB_tag == head) {
           rmt[check_rmt_entry].valid = false;
         }
       }
-      
+
+      wakeup.erase(std::remove(wakeup.begin(), wakeup.end(), head), wakeup.end());
+
+      printf("%lu  ", pl_print.age);
+      printf("fu{%d}  ", pl_print.op_type);
+      printf("src{%d,%d}  ", rob[head].src1, rob[head].src2);
+      printf("dst{%d}  ", rob[head].dest);
+      printf("FE{%lu,%lu} ", pl_print.begin_cycle[0], (pl_print.begin_cycle[1] - pl_print.begin_cycle[0]));
+      printf("DE{%lu,%lu}  ", pl_print.begin_cycle[1], (pl_print.begin_cycle[2] - pl_print.begin_cycle[1]));
+      printf("RN{%lu,%lu}  ", pl_print.begin_cycle[2], (pl_print.begin_cycle[3] - pl_print.begin_cycle[2]));
+      printf("RR{%lu,%lu}  ", pl_print.begin_cycle[3], (pl_print.begin_cycle[4] - pl_print.begin_cycle[3]));
+      printf("DI{%lu,%lu}  ", pl_print.begin_cycle[4], (pl_print.begin_cycle[5] - pl_print.begin_cycle[4]));
+      printf("IS{%lu,%lu}  ", pl_print.begin_cycle[5], (pl_print.begin_cycle[6] - pl_print.begin_cycle[5]));
+      printf("EX{%lu,%lu}  ", (pl_print.begin_cycle[6]), (pl_print.begin_cycle[7] - pl_print.begin_cycle[6]));
+      printf("WB{%lu,%u}  ", pl_print.begin_cycle[7], 1);
+      printf("RT{%lu,%lu}", pl_print.begin_cycle[8], ((total_cycle_count - pl_print.begin_cycle[8]))+1);
+      printf("\n");
+
+      if((rob[head].metadata).age == (unsigned)final_instruction_number) {is_done = true; break;}
+
       // Increment head pointer
       head = (head + 1)%rob_size;
       
