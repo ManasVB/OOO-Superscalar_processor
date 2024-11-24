@@ -6,6 +6,7 @@
 #include <cassert>
 
 #include "execute.h"
+#include "dispatch.h"
 
 using namespace std;
 
@@ -13,7 +14,7 @@ extern vector<ROB> rob;
 extern vector<RMT> rmt;
 extern vector<IQ> iq;
 
-extern vector<uint32_t> wakeup;
+extern vector<vector<pipeline_regs_d>> bundle;
 
 vector<pipeline_regs_e> execute_list;
 vector<pipeline_regs_e> WB_Reg;
@@ -61,7 +62,6 @@ void Issue(unsigned long int width) {
 void Execute() {
 
   uint8_t WB_Reg_Counter = 0;
-  // wakeup.clear();
 
   for(auto &instr: execute_list) {
     if(instr.valid) {
@@ -84,8 +84,27 @@ void Execute() {
           }
         }
 
-        // Send a wakeup signal to RR and DI
-        wakeup.push_back(instr.payload.dest);
+        // Wakeup dependent sources in the DI bundle
+        for(auto &DI_itr : bundle[3]) {
+          if(!DI_itr.src1_rdy && DI_itr.src1 == instr.payload.dest) {
+            DI_itr.src1_rdy = true;
+          }
+
+          if(!DI_itr.src2_rdy && DI_itr.src2 == instr.payload.dest) {
+            DI_itr.src2_rdy = true;
+          }          
+        }
+
+        // Wakeup dependent sources in the RR bundle
+        for(auto &RR_itr : bundle[2]) {
+          if(!RR_itr.src1_rdy && RR_itr.src1 == instr.payload.dest) {
+            RR_itr.src1_rdy = true;
+          }
+
+          if(!RR_itr.src2_rdy && RR_itr.src2 == instr.payload.dest) {
+            RR_itr.src2_rdy = true;
+          }          
+        }
 
       } else if(instr.payload.latency > 1) {
         --(instr.payload.latency);
@@ -145,8 +164,6 @@ void Retire(unsigned long int rob_size, unsigned long int width) {
           rmt[check_rmt_entry].valid = false;
         }
       }
-
-      wakeup.erase(std::remove(wakeup.begin(), wakeup.end(), head), wakeup.end());
 
       printf("%lu  ", pl_print.age);
       printf("fu{%d}  ", pl_print.op_type);

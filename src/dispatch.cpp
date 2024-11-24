@@ -17,8 +17,6 @@ extern vector<ROB> rob;
 extern vector<RMT> rmt;
 extern vector<IQ> iq;
 
-extern vector<uint32_t> wakeup;
-
 extern bool trace_read_complete;
 extern bool is_done;
 
@@ -145,21 +143,14 @@ void RegRead() {
           instr.src2_rdy = true;
         }
 
-        if(!wakeup.empty()) {
-          for(auto &wakeup_itr: wakeup) {
-            if(!instr.src1_rdy && instr.src1 == (int)wakeup_itr) {
-              instr.src1_rdy = true;
-              break;
-            }
-          }
-
-          for(auto &wakeup_itr: wakeup) {
-            if(!instr.src2_rdy && instr.src2 == (int)wakeup_itr) {
-              instr.src2_rdy = true;
-              break;
-            }
-          }
+        if(rob[rmt[instr.src1].ROB_tag].rdy && instr.src1 != -1) {
+          instr.src1_rdy = true;
         }
+
+        if(rob[rmt[instr.src2].ROB_tag].rdy && instr.src2 != -1) {
+          instr.src2_rdy = true;
+        }
+
       }
 
       DI_REG = RR_REG;
@@ -199,23 +190,6 @@ void Dispatch() {
           DI_REG[bundle_count].begin_cycle[4] = total_cycle_count;
 
           rob[DI_REG[bundle_count].dest].metadata = DI_REG[bundle_count];
-
-          // Check for wakeup
-          if(!wakeup.empty()) {
-            for(auto &wakeup_itr: wakeup) {
-              if(!DI_REG[bundle_count].src1_rdy && DI_REG[bundle_count].src1 == (int)wakeup_itr) {
-                DI_REG[bundle_count].src1_rdy = true;
-                break;
-              }
-            }
-
-            for(auto &wakeup_itr: wakeup) {
-              if(!DI_REG[bundle_count].src2_rdy && DI_REG[bundle_count].src2 == (int)wakeup_itr) {
-                DI_REG[bundle_count].src2_rdy = true;
-                break;
-              }
-            }
-          }
 
           // Add to IQ
           iq_itr.age = DI_REG[bundle_count].age;

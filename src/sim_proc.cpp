@@ -30,8 +30,6 @@ bool is_done = false;
 extern vector<pipeline_regs_e> execute_list;
 extern vector<pipeline_regs_e> WB_Reg;
 
-vector<uint32_t> wakeup;
-
 static bool Advance_Cycle(void);
 
 /*  argc holds the number of command line arguments
