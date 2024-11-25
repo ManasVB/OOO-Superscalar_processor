@@ -180,7 +180,7 @@ void Retire(unsigned long int rob_size, unsigned long int width) {
       printf("RT{%lu,%lu}", pl_print.begin_cycle[8], ((total_cycle_count - pl_print.begin_cycle[8]))+1);
       printf("\n");
 
-      if((rob[head].metadata).age == (unsigned)final_instruction_number) {is_done = true; break;}
+      if((rob[head].metadata).age == (unsigned)(final_instruction_number-1)) {is_done = true; break;}
 
       // Increment head pointer
       head = (head + 1)%rob_size;
