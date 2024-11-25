@@ -143,13 +143,13 @@ void RegRead() {
           instr.src2_rdy = true;
         }
 
-        if(rob[rmt[instr.src1].ROB_tag].rdy && instr.src1 != -1) {
-          instr.src1_rdy = true;
-        }
+        if(instr.src1 != -1)
+          if(rob[instr.src1].rdy)
+            instr.src1_rdy = true;
 
-        if(rob[rmt[instr.src2].ROB_tag].rdy && instr.src2 != -1) {
-          instr.src2_rdy = true;
-        }
+        if(instr.src2 != -1)
+          if(rob[instr.src1].rdy)
+            instr.src2_rdy = true;
 
       }
 
