@@ -72,11 +72,20 @@ void Fetch(FILE *FP, unsigned long int width) {
 
 void Decode() {
   if(!DE_REG.empty()) {
+    
+    // timestamp[3] is the time spent in decode stage
+    for(auto &instr: DE_REG) {
+      ++instr.timestamp[3];
+    }
+
     if(RN_REG.empty()) {
       for(auto &instr: DE_REG) {
 
         // Decode stage begin cycle
-        instr.begin_cycle[1] = total_cycle_count;
+        instr.timestamp[2] = total_cycle_count;
+
+        // timestamp[1] is the time spent in fetch stage
+        instr.timestamp[1] = instr.timestamp[2] - instr.timestamp[0];
       }
 
       RN_REG = DE_REG;
@@ -90,11 +99,16 @@ void Rename(unsigned long int rob_size) {
   if(!RN_REG.empty()) {
     bool is_rob_free = ((RN_REG.size() <= (head - tail  + rob_size)));
 
+    // timestamp[5] is the time spent in rename stage
+    for(auto &instr: RN_REG) {
+      ++instr.timestamp[5];
+    }
+
     if(RR_REG.empty() && is_rob_free && !is_rob_full) {
       for(auto &instr: RN_REG) {
 
         // Rename stage begin cycle
-        instr.begin_cycle[2] = total_cycle_count;
+        instr.timestamp[4] = total_cycle_count;
 
         // allocate an entry in the ROB for the instruction
         rob[tail] = {.rdy = false, .dest = instr.dest, .src1 = instr.src1, .src2 = instr.src2};
@@ -128,10 +142,17 @@ void Rename(unsigned long int rob_size) {
 
 void RegRead() {
   if(!RR_REG.empty()) {
+
+    // timestamp[7] is the time spent in RegRead stage
+    for(auto &instr: RR_REG) {
+      ++instr.timestamp[7];
+    }
+
     if(DI_REG.empty()) {
       for(auto &instr: RR_REG) {
+        
         // RegRead stage begin cycle
-        instr.begin_cycle[3] = total_cycle_count;
+        instr.timestamp[6] = total_cycle_count;
 
         if(instr.src1 == -1) {
           instr.src1_rdy = true;
@@ -160,6 +181,11 @@ void RegRead() {
 void Dispatch() {
   if(!DI_REG.empty()) {
 
+    // timestamp[9] is the time spent in Dispatch stage
+    for(auto &instr: DI_REG) {
+      ++instr.timestamp[9];
+    }
+
     uint8_t iq_free_entries = 0;
     bool is_iq_free = false;
 
@@ -185,7 +211,7 @@ void Dispatch() {
           iq_itr.valid = true;
 
           // Dispatch stage begin cycle
-          DI_REG[bundle_count].begin_cycle[4] = total_cycle_count;
+          DI_REG[bundle_count].timestamp[8] = total_cycle_count;
 
           // Add to IQ
           iq_itr.age = DI_REG[bundle_count].age;

@@ -22,7 +22,7 @@ typedef struct {
     bool src2_rdy;
     int src2;
 
-    uint64_t begin_cycle[9]; //Begin cycle for all the stages
+    uint64_t timestamp[18]; //Begin cycle for all the stages
 
 } Payload;
 
