@@ -81,11 +81,12 @@ void Decode() {
     if(RN_REG.empty()) {
       for(auto &instr: DE_REG) {
 
-        // Decode stage begin cycle
-        instr.timestamp[2] = total_cycle_count;
-
         // timestamp[1] is the time spent in fetch stage
-        instr.timestamp[1] = instr.timestamp[2] - instr.timestamp[0];
+        instr.timestamp[1] = 1;
+
+        // Decode stage begin cycle = fetch + 1
+        instr.timestamp[2] = instr.timestamp[0] + instr.timestamp[1];
+
       }
 
       RN_REG = DE_REG;
@@ -107,8 +108,8 @@ void Rename(unsigned long int rob_size) {
     if(RR_REG.empty() && is_rob_free && !is_rob_full) {
       for(auto &instr: RN_REG) {
 
-        // Rename stage begin cycle
-        instr.timestamp[4] = total_cycle_count;
+        // Rename stage begin cycle = Decode begin + decode spent
+        instr.timestamp[4] = instr.timestamp[2] + instr.timestamp[3];
 
         // allocate an entry in the ROB for the instruction
         rob[tail] = {.rdy = false, .dest = instr.dest, .src1 = instr.src1, .src2 = instr.src2};
@@ -151,8 +152,8 @@ void RegRead() {
     if(DI_REG.empty()) {
       for(auto &instr: RR_REG) {
         
-        // RegRead stage begin cycle
-        instr.timestamp[6] = total_cycle_count;
+        // RegRead stage begin cycle = RN begin + RN timespent
+        instr.timestamp[6] = instr.timestamp[4] + instr.timestamp[5];
 
         if(instr.src1 == -1) {
           instr.src1_rdy = true;
@@ -211,7 +212,7 @@ void Dispatch() {
           iq_itr.valid = true;
 
           // Dispatch stage begin cycle
-          DI_REG[bundle_count].timestamp[8] = total_cycle_count;
+          DI_REG[bundle_count].timestamp[8] = DI_REG[bundle_count].timestamp[6] + DI_REG[bundle_count].timestamp[7];
 
           // Add to IQ
           iq_itr.age = DI_REG[bundle_count].age;

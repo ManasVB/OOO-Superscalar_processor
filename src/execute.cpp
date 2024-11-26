@@ -35,11 +35,12 @@ void Issue(unsigned long int width) {
 
   for(auto &instr : iq) {
     if(instr.valid) {
+
       if(instr.payload.src1_rdy && instr.payload.src2_rdy) {
         ++instructions_removed;
 
         // Issue stage begin cycle
-        instr.payload.begin_cycle[5] = total_cycle_count;
+        instr.payload.timestamp[10] = instr.payload.timestamp[8] + instr.payload.timestamp[9];
         
         // Add to the execution list
         for(auto &exec_itr: execute_list) {
@@ -65,6 +66,10 @@ void Execute() {
 
   for(auto &instr: execute_list) {
     if(instr.valid) {
+
+      // timestamp[13] is the time spent in execute stage
+      ++instr.payload.timestamp[13];
+
       if(instr.payload.latency == 1) {
 
         WB_Reg[WB_Reg_Counter] = instr;
@@ -118,28 +123,23 @@ void Writeback() {
   for(auto &instr: WB_Reg) {
     if(instr.valid) {
 
-      uint8_t latency = 0;
-
       // Writeback stage begin cycle
-      instr.payload.begin_cycle[7] = total_cycle_count;
+      instr.payload.timestamp[14] = total_cycle_count;
 
-      if(instr.payload.op_type == 0)
-        latency = 1;
-      else if(instr.payload.op_type == 1)
-        latency = 2;
-      else
-        latency = 5;
+      // Execute stage begin cycle
+      instr.payload.timestamp[12] = instr.payload.timestamp[14] - instr.payload.timestamp[13];
 
-      // WB stage begin cycle = Ex stage begin cycle + latency
-      instr.payload.begin_cycle[6] = total_cycle_count - latency;
+      // IQ time spent
+      instr.payload.timestamp[11] = instr.payload.timestamp[12] - instr.payload.timestamp[10];
 
-      // Retire stage begin cycle
-      instr.payload.begin_cycle[8] = instr.payload.begin_cycle[7] + 1;
+      // timestamp[15] is the time spent in Writeback stage
+      ++instr.payload.timestamp[15];
 
+      // copy all the timestamps to ROB
       rob[instr.payload.dest].metadata = instr.payload;
 
       rob[instr.payload.dest].rdy = true;
-      // rob[instr.payload.dest].metadata = &(instr.payload);
+
       instr.valid = false;
     }
   }
@@ -151,6 +151,9 @@ void Retire(unsigned long int rob_size, unsigned long int width) {
 
   while((head != tail) || is_rob_full) {
     if(rob[head].rdy) {
+
+      // Retire stage begin cycle
+      rob[head].metadata.timestamp[16] = rob[head].metadata.timestamp[14] + rob[head].metadata.timestamp[15];
 
       Payload pl_print = (rob[head].metadata);
       
@@ -169,15 +172,15 @@ void Retire(unsigned long int rob_size, unsigned long int width) {
       printf("fu{%d}  ", pl_print.op_type);
       printf("src{%d,%d}  ", rob[head].src1, rob[head].src2);
       printf("dst{%d}  ", rob[head].dest);
-      printf("FE{%lu,%lu} ", pl_print.begin_cycle[0], (pl_print.begin_cycle[1] - pl_print.begin_cycle[0]));
-      printf("DE{%lu,%lu}  ", pl_print.begin_cycle[1], (pl_print.begin_cycle[2] - pl_print.begin_cycle[1]));
-      printf("RN{%lu,%lu}  ", pl_print.begin_cycle[2], (pl_print.begin_cycle[3] - pl_print.begin_cycle[2]));
-      printf("RR{%lu,%lu}  ", pl_print.begin_cycle[3], (pl_print.begin_cycle[4] - pl_print.begin_cycle[3]));
-      printf("DI{%lu,%lu}  ", pl_print.begin_cycle[4], (pl_print.begin_cycle[5] - pl_print.begin_cycle[4]));
-      printf("IS{%lu,%lu}  ", pl_print.begin_cycle[5], (pl_print.begin_cycle[6] - pl_print.begin_cycle[5]));
-      printf("EX{%lu,%lu}  ", (pl_print.begin_cycle[6]), (pl_print.begin_cycle[7] - pl_print.begin_cycle[6]));
-      printf("WB{%lu,%u}  ", pl_print.begin_cycle[7], 1);
-      printf("RT{%lu,%lu}", pl_print.begin_cycle[8], ((total_cycle_count - pl_print.begin_cycle[8]))+1);
+      printf("FE{%lu,%lu} ", pl_print.timestamp[0], pl_print.timestamp[1]);
+      printf("DE{%lu,%lu}  ", pl_print.timestamp[2], pl_print.timestamp[3]);
+      printf("RN{%lu,%lu}  ", pl_print.timestamp[4], pl_print.timestamp[5]);
+      printf("RR{%lu,%lu}  ", pl_print.timestamp[6], pl_print.timestamp[7]);
+      printf("DI{%lu,%lu}  ", pl_print.timestamp[8], pl_print.timestamp[9]);
+      printf("IS{%lu,%lu}  ", pl_print.timestamp[10], pl_print.timestamp[11]);
+      printf("EX{%lu,%lu}  ", pl_print.timestamp[12], pl_print.timestamp[13]);
+      printf("WB{%lu,%lu}  ", pl_print.timestamp[14], pl_print.timestamp[15]);
+      printf("RT{%lu,%lu}", pl_print.timestamp[16], ((total_cycle_count - pl_print.timestamp[16]))+1);
       printf("\n");
 
       if((rob[head].metadata).age == (unsigned)(final_instruction_number-1)) {is_done = true; break;}
