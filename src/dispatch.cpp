@@ -132,6 +132,7 @@ void Rename(unsigned long int rob_size) {
           instr.src2 = (rmt[instr.src2].valid) ? rmt[instr.src2].ROB_tag : -1;
         }
 
+        // rename its destination register (if it has one).
         if(instr.dest != -1) {
           rmt[instr.dest] = {.valid = true, .ROB_tag = tail};
         }

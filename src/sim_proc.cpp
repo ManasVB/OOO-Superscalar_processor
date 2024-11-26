@@ -127,23 +127,5 @@ static bool Advance_Cycle () {
 
     ++total_cycle_count;
     
-    // printf("total cycle count: %lu \n",total_cycle_count);
-
-    // printf("RMT:\t reg\t, valid\t, ROB_Tag\n");
-    // for(auto i =0; i <67; i++) {
-    //     printf("\t%u\t%u\t, %u\n", i, rmt[i].valid, rmt[i].ROB_tag);
-    // }
-
-    // printf("IQ:\t valid\t, Age\t, dest\t, s1_r\t, src1\t, s2_r\t, src2\n");
-    // for(auto &iq_itr:iq) {
-    //     printf("\t%u\t, %lu\t, %d\t, %u\t, %d\t, %u\t, %d\n", iq_itr.valid, iq_itr.age, iq_itr.payload.dest, iq_itr.payload.src1_rdy, iq_itr.payload.src1, iq_itr.payload.src2_rdy, iq_itr.payload.src2);
-    // }
-
-    // printf("ROB:\t Age\t, dest\t, src1\t, src2\t, rdy\t, head\t, tail\n");
-    // for(auto &rob_itr : rob) {
-    //     printf("\t%lu\t, %d\t, %d\t, %d\t, %u\t, %u\t, %u\n", rob_itr.metadata.age, rob_itr.dest, rob_itr.src1, rob_itr.src2, rob_itr.rdy, head, tail);
-    // }
-
-
     return (!trace_read_complete || !is_done);
 }
