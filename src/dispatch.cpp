@@ -88,7 +88,7 @@ void Decode() {
 void Rename(unsigned long int rob_size) {
 
   if(!RN_REG.empty()) {
-    bool is_rob_free = ((RN_REG.size() <= (head - tail - 1 + rob_size)%rob_size));
+    bool is_rob_free = ((RN_REG.size() <= (head - tail  + rob_size)));
 
     if(RR_REG.empty() && is_rob_free && !is_rob_full) {
       for(auto &instr: RN_REG) {
