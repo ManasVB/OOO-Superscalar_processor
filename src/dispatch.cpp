@@ -88,9 +88,9 @@ void Decode() {
 void Rename(unsigned long int rob_size) {
 
   if(!RN_REG.empty()) {
-    bool is_rob_free = (RN_REG.size() <= (head - tail - 1 + rob_size)%rob_size);
+    bool is_rob_free = ((RN_REG.size() <= (head - tail - 1 + rob_size)%rob_size));
 
-    if(RR_REG.empty() && is_rob_free) {
+    if(RR_REG.empty() && is_rob_free && !is_rob_full) {
       for(auto &instr: RN_REG) {
 
         // Rename stage begin cycle
@@ -148,7 +148,7 @@ void RegRead() {
             instr.src1_rdy = true;
 
         if(instr.src2 != -1)
-          if(rob[instr.src1].rdy)
+          if(rob[instr.src2].rdy)
             instr.src2_rdy = true;
 
       }
