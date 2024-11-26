@@ -6,6 +6,7 @@
 #include <cassert>
 
 #include "execute.h"
+#include "dispatch.h"
 
 using namespace std;
 
@@ -13,7 +14,7 @@ extern vector<ROB> rob;
 extern vector<RMT> rmt;
 extern vector<IQ> iq;
 
-extern vector<uint32_t> wakeup;
+extern vector<vector<pipeline_regs_d>> bundle;
 
 vector<pipeline_regs_e> execute_list;
 vector<pipeline_regs_e> WB_Reg;
@@ -61,7 +62,6 @@ void Issue(unsigned long int width) {
 void Execute() {
 
   uint8_t WB_Reg_Counter = 0;
-  // wakeup.clear();
 
   for(auto &instr: execute_list) {
     if(instr.valid) {
@@ -84,8 +84,27 @@ void Execute() {
           }
         }
 
-        // Send a wakeup signal to RR and DI
-        wakeup.push_back(instr.payload.dest);
+        // Wakeup dependent sources in the DI bundle
+        for(auto &DI_itr : bundle[3]) {
+          if(!DI_itr.src1_rdy && DI_itr.src1 == instr.payload.dest) {
+            DI_itr.src1_rdy = true;
+          }
+
+          if(!DI_itr.src2_rdy && DI_itr.src2 == instr.payload.dest) {
+            DI_itr.src2_rdy = true;
+          }          
+        }
+
+        // Wakeup dependent sources in the RR bundle
+        for(auto &RR_itr : bundle[2]) {
+          if(!RR_itr.src1_rdy && RR_itr.src1 == instr.payload.dest) {
+            RR_itr.src1_rdy = true;
+          }
+
+          if(!RR_itr.src2_rdy && RR_itr.src2 == instr.payload.dest) {
+            RR_itr.src2_rdy = true;
+          }          
+        }
 
       } else if(instr.payload.latency > 1) {
         --(instr.payload.latency);
@@ -146,8 +165,6 @@ void Retire(unsigned long int rob_size, unsigned long int width) {
         }
       }
 
-      wakeup.erase(std::remove(wakeup.begin(), wakeup.end(), head), wakeup.end());
-
       printf("%lu  ", pl_print.age);
       printf("fu{%d}  ", pl_print.op_type);
       printf("src{%d,%d}  ", rob[head].src1, rob[head].src2);
@@ -163,7 +180,7 @@ void Retire(unsigned long int rob_size, unsigned long int width) {
       printf("RT{%lu,%lu}", pl_print.begin_cycle[8], ((total_cycle_count - pl_print.begin_cycle[8]))+1);
       printf("\n");
 
-      if((rob[head].metadata).age == (unsigned)final_instruction_number) {is_done = true; break;}
+      if((rob[head].metadata).age == (unsigned)(final_instruction_number-1)) {is_done = true; break;}
 
       // Increment head pointer
       head = (head + 1)%rob_size;

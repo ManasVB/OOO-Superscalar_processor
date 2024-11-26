@@ -17,8 +17,6 @@ extern vector<ROB> rob;
 extern vector<RMT> rmt;
 extern vector<IQ> iq;
 
-extern vector<uint32_t> wakeup;
-
 extern bool trace_read_complete;
 extern bool is_done;
 
@@ -90,9 +88,9 @@ void Decode() {
 void Rename(unsigned long int rob_size) {
 
   if(!RN_REG.empty()) {
-    bool is_rob_free = (tail + RN_REG.size())%rob_size > head;
+    bool is_rob_free = ((RN_REG.size() <= (head - tail  + rob_size)));
 
-    if(RR_REG.empty() && is_rob_free) {
+    if(RR_REG.empty() && is_rob_free && !is_rob_full) {
       for(auto &instr: RN_REG) {
 
         // Rename stage begin cycle
@@ -145,21 +143,14 @@ void RegRead() {
           instr.src2_rdy = true;
         }
 
-        if(!wakeup.empty()) {
-          for(auto &wakeup_itr: wakeup) {
-            if(!instr.src1_rdy && instr.src1 == (int)wakeup_itr) {
-              instr.src1_rdy = true;
-              break;
-            }
-          }
+        if(instr.src1 != -1)
+          if(rob[instr.src1].rdy)
+            instr.src1_rdy = true;
 
-          for(auto &wakeup_itr: wakeup) {
-            if(!instr.src2_rdy && instr.src2 == (int)wakeup_itr) {
-              instr.src2_rdy = true;
-              break;
-            }
-          }
-        }
+        if(instr.src2 != -1)
+          if(rob[instr.src2].rdy)
+            instr.src2_rdy = true;
+
       }
 
       DI_REG = RR_REG;
@@ -199,23 +190,6 @@ void Dispatch() {
           DI_REG[bundle_count].begin_cycle[4] = total_cycle_count;
 
           rob[DI_REG[bundle_count].dest].metadata = DI_REG[bundle_count];
-
-          // Check for wakeup
-          if(!wakeup.empty()) {
-            for(auto &wakeup_itr: wakeup) {
-              if(!DI_REG[bundle_count].src1_rdy && DI_REG[bundle_count].src1 == (int)wakeup_itr) {
-                DI_REG[bundle_count].src1_rdy = true;
-                break;
-              }
-            }
-
-            for(auto &wakeup_itr: wakeup) {
-              if(!DI_REG[bundle_count].src2_rdy && DI_REG[bundle_count].src2 == (int)wakeup_itr) {
-                DI_REG[bundle_count].src2_rdy = true;
-                break;
-              }
-            }
-          }
 
           // Add to IQ
           iq_itr.age = DI_REG[bundle_count].age;

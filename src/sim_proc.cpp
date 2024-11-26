@@ -30,8 +30,6 @@ bool is_done = false;
 extern vector<pipeline_regs_e> execute_list;
 extern vector<pipeline_regs_e> WB_Reg;
 
-vector<uint32_t> wakeup;
-
 static bool Advance_Cycle(void);
 
 /*  argc holds the number of command line arguments
@@ -59,10 +57,10 @@ int main (int argc, char* argv[]) {
     params.iq_size      = strtoul(argv[2], NULL, 10);
     params.width        = strtoul(argv[3], NULL, 10);
     trace_file          = argv[4];
-    printf("rob_size:%lu "
-            "iq_size:%lu "
-            "width:%lu "
-            "tracefile:%s\n", params.rob_size, params.iq_size, params.width, trace_file);
+    // printf("rob_size:%lu "
+    //         "iq_size:%lu "
+    //         "width:%lu "
+    //         "tracefile:%s\n", params.rob_size, params.iq_size, params.width, trace_file);
     // Open trace_file in read mode
     FP = fopen(trace_file, "r");
     if(FP == NULL) {
@@ -111,7 +109,16 @@ int main (int argc, char* argv[]) {
 
     } while (Advance_Cycle());
 
-    // std::cout << "Total instruction count: " << total_instruction_count << "\nTotal cycle count: " << total_cycle_count << std::endl;
+    printf("# === Simulator Command =========\n");
+    printf("# ./sim %lu %lu %lu %s\n", params.rob_size, params.iq_size, params.width, trace_file);
+    printf("# === Processor Configuration ===\n");
+    printf("# ROB_SIZE = %lu\n",params.rob_size);
+    printf("# IQ_SIZE = %lu\n",params.iq_size);
+    printf("# WIDTH    = %lu\n",params.width);
+    printf("# === Simulation Results ========\n");
+    printf("# Dynamic Instruction Count    = %lu\n",total_instruction_count);
+    printf("# Cycles                       = %lu\n", total_cycle_count);
+    printf("# Instructions Per Cycle (IPC) = %.2f\n", (float)total_instruction_count/(float)total_cycle_count);
     
     return 0;
 }
@@ -121,6 +128,22 @@ static bool Advance_Cycle () {
     ++total_cycle_count;
     
     // printf("total cycle count: %lu \n",total_cycle_count);
+
+    // printf("RMT:\t reg\t, valid\t, ROB_Tag\n");
+    // for(auto i =0; i <67; i++) {
+    //     printf("\t%u\t%u\t, %u\n", i, rmt[i].valid, rmt[i].ROB_tag);
+    // }
+
+    // printf("IQ:\t valid\t, Age\t, dest\t, s1_r\t, src1\t, s2_r\t, src2\n");
+    // for(auto &iq_itr:iq) {
+    //     printf("\t%u\t, %lu\t, %d\t, %u\t, %d\t, %u\t, %d\n", iq_itr.valid, iq_itr.age, iq_itr.payload.dest, iq_itr.payload.src1_rdy, iq_itr.payload.src1, iq_itr.payload.src2_rdy, iq_itr.payload.src2);
+    // }
+
+    // printf("ROB:\t Age\t, dest\t, src1\t, src2\t, rdy\t, head\t, tail\n");
+    // for(auto &rob_itr : rob) {
+    //     printf("\t%lu\t, %d\t, %d\t, %d\t, %u\t, %u\t, %u\n", rob_itr.metadata.age, rob_itr.dest, rob_itr.src1, rob_itr.src2, rob_itr.rdy, head, tail);
+    // }
+
 
     return (!trace_read_complete || !is_done);
 }
