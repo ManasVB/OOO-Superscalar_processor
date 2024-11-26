@@ -119,9 +119,6 @@ int main (int argc, char* argv[]) {
     printf("# Dynamic Instruction Count    = %lu\n",total_instruction_count);
     printf("# Cycles                       = %lu\n", total_cycle_count);
     printf("# Instructions Per Cycle (IPC) = %.2f\n", (float)total_instruction_count/(float)total_cycle_count);
-
-
-    // std::cout << "Total instruction count: " << total_instruction_count << "\nTotal cycle count: " << total_cycle_count << std::endl;
     
     return 0;
 }
