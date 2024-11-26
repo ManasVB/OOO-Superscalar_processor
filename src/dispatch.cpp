@@ -97,7 +97,7 @@ void Rename(unsigned long int rob_size) {
         instr.begin_cycle[2] = total_cycle_count;
 
         // allocate an entry in the ROB for the instruction
-        rob[tail] = {.rdy = false, .dest = instr.dest, .src1 = instr.src1, .src2 = instr.src2 ,.metadata = instr};
+        rob[tail] = {.rdy = false, .dest = instr.dest, .src1 = instr.src1, .src2 = instr.src2};
 
         // rename its source registers
         if(instr.src1 != -1) {
@@ -132,8 +132,6 @@ void RegRead() {
       for(auto &instr: RR_REG) {
         // RegRead stage begin cycle
         instr.begin_cycle[3] = total_cycle_count;
-
-        rob[instr.dest].metadata = instr;
 
         if(instr.src1 == -1) {
           instr.src1_rdy = true;
@@ -188,8 +186,6 @@ void Dispatch() {
 
           // Dispatch stage begin cycle
           DI_REG[bundle_count].begin_cycle[4] = total_cycle_count;
-
-          rob[DI_REG[bundle_count].dest].metadata = DI_REG[bundle_count];
 
           // Add to IQ
           iq_itr.age = DI_REG[bundle_count].age;

@@ -34,24 +34,24 @@ void Issue(unsigned long int width) {
   uint8_t instructions_removed = 0;
 
   for(auto &instr : iq) {
-    if(instr.valid && instr.payload.src1_rdy && instr.payload.src2_rdy) {
-      ++instructions_removed;
+    if(instr.valid) {
+      if(instr.payload.src1_rdy && instr.payload.src2_rdy) {
+        ++instructions_removed;
 
-      // Issue stage begin cycle
-      instr.payload.begin_cycle[5] = total_cycle_count;
-
-      rob[instr.payload.dest].metadata = instr.payload;
-      
-      // Add to the execution list
-      for(auto &exec_itr: execute_list) {
-        if(!exec_itr.valid) { // valid means free entry
-          exec_itr = instr;
-          break;
+        // Issue stage begin cycle
+        instr.payload.begin_cycle[5] = total_cycle_count;
+        
+        // Add to the execution list
+        for(auto &exec_itr: execute_list) {
+          if(!exec_itr.valid) { // valid means free entry
+            exec_itr = instr;
+            break;
+          }
         }
-      }
 
-      // Remove instruction from the IQ
-      instr.valid = false;
+        // Remove instruction from the IQ
+        instr.valid = false;
+      }
     }
 
     if(instructions_removed == width)
