@@ -98,14 +98,23 @@ void Decode() {
 void Rename(unsigned long int rob_size) {
 
   if(!RN_REG.empty()) {
-    bool is_rob_free = ((RN_REG.size() <= (head - tail  + rob_size)));
+    uint32_t free_spots = 0;
+
+    if(!is_rob_full) {
+      if(tail >= head)
+        free_spots = rob_size - (tail - head);
+      else
+        free_spots = head - tail;
+    }
+
+    bool is_rob_free = (RN_REG.size() <= free_spots);
 
     // timestamp[5] is the time spent in rename stage
     for(auto &instr: RN_REG) {
       ++instr.timestamp[5];
     }
 
-    if(RR_REG.empty() && is_rob_free && !is_rob_full) {
+    if(RR_REG.empty() && is_rob_free) {
       for(auto &instr: RN_REG) {
 
         // Rename stage begin cycle = Decode begin + decode spent
