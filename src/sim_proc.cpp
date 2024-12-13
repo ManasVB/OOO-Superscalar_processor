@@ -7,8 +7,8 @@
 #include <vector>
 
 #include "sim_proc.h"
-#include "dispatch.h"
-#include "execute.h"
+#include "frontend.h"
+#include "backend.h"
 
 using namespace std;
 

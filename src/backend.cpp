@@ -5,8 +5,8 @@
 #include <algorithm>
 #include <cassert>
 
-#include "execute.h"
-#include "dispatch.h"
+#include "backend.h"
+#include "frontend.h"
 
 using namespace std;
 
